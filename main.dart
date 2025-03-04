@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:senior_project/pages/login_page.dart';
+import 'package:senior_project/pages/chat_page.dart';
+import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
 
 void main() {
@@ -10,7 +13,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ProfilePage(),
+      home: LoginPage(),
+      routes: {
+        '/dashboard': (context) => DashboardPage(),
+        '/chat': (context) => ChatScreen(),
+        '/profile': (context) => ProfilePage(),
+      },
     );
   }
 }

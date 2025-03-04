@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:senior_project/pages/chat_page.dart';
 import 'package:senior_project/pages/showDialog.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
 import '../models/user.dart';
 import '../utils/user_data.dart';
 import '../widgets/button_widget.dart';
+import 'package:senior_project/pages/login_page.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -27,10 +29,13 @@ class _ProfilePageState extends State<ProfilePage> {
         );
         break;
       case 1:
-      // Navigate to Settings
+        // Navigate to Settings
         break;
-      case 2:
-      // Handle log out
+      case 2: // Log Out
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
         break;
       case 3:
         Navigator.push(
@@ -57,15 +62,10 @@ class _ProfilePageState extends State<ProfilePage> {
             Container(
               height: 120, // Set the desired height
               child: DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                ),
+                decoration: BoxDecoration(color: Colors.green),
                 child: Text(
                   'Menu',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 24),
                 ),
               ),
             ),
@@ -98,9 +98,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: user.imagePath.startsWith('http')
-                      ? NetworkImage(user.imagePath)
-                      : AssetImage(user.imagePath) as ImageProvider,
+                  backgroundImage:
+                      user.imagePath.startsWith('http')
+                          ? NetworkImage(user.imagePath)
+                          : AssetImage(user.imagePath) as ImageProvider,
                 ),
               ),
               const SizedBox(height: 10),
@@ -145,14 +146,8 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icon(Icons.settings),
             label: 'Settings',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.logout),
-            label: 'Log out',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Log out'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.amber[800],
@@ -161,11 +156,18 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget buildEditableField(String label, String value, Function(String) onChanged) {
+  Widget buildEditableField(
+    String label,
+    String value,
+    Function(String) onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         TextFormField(
           initialValue: value,
           onChanged: onChanged,
@@ -182,7 +184,10 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Relatives", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          "Relatives",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         ListView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
@@ -191,7 +196,9 @@ class _ProfilePageState extends State<ProfilePage> {
             final relative = user.relatives[index];
             return ListTile(
               title: Text(relative["name"]!),
-              subtitle: Text("Phone: ${relative["phone"]!}\nEmail: ${relative["email"]!}"),
+              subtitle: Text(
+                "Phone: ${relative["phone"]!}\nEmail: ${relative["email"]!}",
+              ),
               trailing: IconButton(
                 icon: Icon(Icons.delete),
                 onPressed: () {
