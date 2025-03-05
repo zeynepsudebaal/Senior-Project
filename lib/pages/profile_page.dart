@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:senior_project/pages/chat_page.dart';
+import 'package:senior_project/pages/notifications_page.dart';
 import 'package:senior_project/pages/showDialog.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
+import 'package:senior_project/pages/settings_page.dart'; // SettingsPage import edildi
 import '../models/user.dart';
 import '../utils/user_data.dart';
 import '../widgets/button_widget.dart';
-import 'package:senior_project/pages/login_page.dart';
+import 'package:senior_project/pages/login_page.dart'; // LoginPage import edildi
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -14,13 +16,14 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   User user = UserData.myUser;
-  int _selectedIndex = 0;
+  int _selectedIndex = 3;
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
+    // Burada sayfa geçişlerini yönetebilirsin
     switch (index) {
       case 0:
         Navigator.push(
@@ -29,12 +32,15 @@ class _ProfilePageState extends State<ProfilePage> {
         );
         break;
       case 1:
-        // Navigate to Settings
-        break;
-      case 2: // Log Out
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+        break;
+      case 2:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => NotificationPage()),
         );
         break;
       case 3:
@@ -62,7 +68,9 @@ class _ProfilePageState extends State<ProfilePage> {
             Container(
               height: 120, // Set the desired height
               child: DrawerHeader(
-                decoration: BoxDecoration(color: Colors.green),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 99, 129, 203),
+                ),
                 child: Text(
                   'Menu',
                   style: TextStyle(color: Colors.white, fontSize: 24),
@@ -72,17 +80,35 @@ class _ProfilePageState extends State<ProfilePage> {
             ListTile(
               leading: Icon(Icons.dashboard),
               title: Text('Dashboard'),
-              onTap: () => _onDrawerItemTapped(0),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => DashboardPage()),
+                );
+              },
             ),
             ListTile(
               leading: Icon(Icons.settings),
               title: Text('Settings'),
-              onTap: () => _onDrawerItemTapped(1),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => SettingsPage()),
+                );
+              },
             ),
             ListTile(
               leading: Icon(Icons.logout),
               title: Text('Log out'),
-              onTap: () => _onDrawerItemTapped(2),
+              onTap: () {
+                // Çıkış yapma işlemi
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginPage(),
+                  ), // LoginPage'e yönlendiriyor
+                );
+              },
             ),
           ],
         ),
@@ -137,21 +163,23 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.blue, // Seçili öğe rengi
+        unselectedItemColor: Colors.grey, // Seçilmemiş öğe rengi
+        currentIndex: _selectedIndex, // Seçili sekmeyi takip ediyor
+        onTap: _onItemTapped,
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            label: "Dashboard",
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: Icon(Icons.notifications),
+            label: "Notifications",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Log out'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800],
-        onTap: _onItemTapped,
       ),
     );
   }

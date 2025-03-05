@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:senior_project/pages/dashboard_page.dart';
+import 'package:senior_project/pages/notifications_page.dart';
+import 'package:senior_project/pages/profile_page.dart';
 
 void main() {
   runApp(MyApp());
@@ -19,7 +22,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<String> _messages = [];
-  int _selectedIndex = 0; // Başlangıçta seçili olan sayfa
+  int _selectedIndex = 1; // Başlangıçta seçili olan sayfa
 
   // Sayfalar için widget'lar
   static const List<Widget> _widgetOptions = <Widget>[
@@ -34,6 +37,34 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _selectedIndex = index;
     });
+
+    // Burada sayfa geçişlerini yönetebilirsin
+    switch (index) {
+      case 0:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DashboardPage()),
+        );
+        break;
+      case 1:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+        break;
+      case 2:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => NotificationPage()),
+        );
+        break;
+      case 3:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ProfilePage()),
+        );
+        break;
+    }
   }
 
   @override
@@ -42,14 +73,16 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Text(
           'Communication',
+
           style: TextStyle(
             color: Colors.white, // Yazı rengini beyaz yap
             fontWeight: FontWeight.bold, // Yazıyı kalın yap
           ),
         ),
-        backgroundColor: const Color.fromARGB(255, 26, 35, 126),
+        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
         elevation: 0, // AppBar altındaki gölgeyi kaldırabilirsiniz
         titleSpacing: 0, // Başlığı sola hizalayın
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
@@ -114,18 +147,22 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       // Alt bar
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex, // Seçili olan buton
-        onTap: _onItemTapped, // Butona tıklama işlemi
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Dashboard'),
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.blue, // Seçili öğe rengi
+        unselectedItemColor: Colors.grey, // Seçilmemiş öğe rengi
+        currentIndex: _selectedIndex, // Seçili sekmeyi takip ediyor
+        onTap: _onItemTapped,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: "Dashboard",
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),
-            label: 'Notifications',
+            label: "Notifications",
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
     );
