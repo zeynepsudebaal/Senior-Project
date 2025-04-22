@@ -3,11 +3,11 @@ import 'package:senior_project/pages/chat_page.dart';
 import 'package:senior_project/pages/notifications_page.dart';
 import 'package:senior_project/pages/showDialog.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
-import 'package:senior_project/pages/settings_page.dart'; // SettingsPage import edildi
+import 'package:senior_project/pages/settings_page.dart';
 import '../models/user.dart';
 import '../utils/user_data.dart';
 import '../widgets/button_widget.dart';
-import 'package:senior_project/pages/login_page.dart'; // LoginPage import edildi
+import 'package:senior_project/pages/login_page.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -23,91 +23,69 @@ class _ProfilePageState extends State<ProfilePage> {
       _selectedIndex = index;
     });
 
-    // Burada sayfa geçişlerini yönetebilirsin
     switch (index) {
       case 0:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => DashboardPage()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardPage()));
         break;
       case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ChatScreen()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen()));
         break;
       case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => NotificationPage()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationPage()));
         break;
       case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
         break;
     }
   }
 
   void _onDrawerItemTapped(int index) {
-    Navigator.pop(context); // Close the drawer
+    Navigator.pop(context);
     _onItemTapped(index);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Profile")),
+      backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+      appBar: AppBar(
+        title: Text(
+          "Profile",
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+      ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
             Container(
-              height: 120, // Set the desired height
+              height: 120,
               child: DrawerHeader(
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 99, 129, 203),
-                ),
-                child: Text(
-                  'Menu',
-                  style: TextStyle(color: Colors.white, fontSize: 24),
-                ),
+                decoration: BoxDecoration(color: const Color.fromARGB(255, 99, 129, 203)),
+                child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
               ),
             ),
             ListTile(
               leading: Icon(Icons.dashboard),
               title: Text('Dashboard'),
               onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => DashboardPage()),
-                );
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardPage()));
               },
             ),
             ListTile(
               leading: Icon(Icons.settings),
               title: Text('Settings'),
               onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => SettingsPage()),
-                );
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => SettingsPage()));
               },
             ),
             ListTile(
               leading: Icon(Icons.logout),
               title: Text('Log out'),
               onTap: () {
-                // Çıkış yapma işlemi
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LoginPage(),
-                  ), // LoginPage'e yönlendiriyor
-                );
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
               },
             ),
           ],
@@ -124,10 +102,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage:
-                      user.imagePath.startsWith('http')
-                          ? NetworkImage(user.imagePath)
-                          : AssetImage(user.imagePath) as ImageProvider,
+                  backgroundImage: user.imagePath.startsWith('http')
+                      ? NetworkImage(user.imagePath)
+                      : AssetImage(user.imagePath) as ImageProvider,
                 ),
               ),
               const SizedBox(height: 10),
@@ -156,7 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () {
                   showSafetyNotification(context);
                 },
-                child: Text("Check Safety"),
+                child: Text("Check Safety", style: TextStyle(color: Color.fromARGB(255, 99, 129, 203))),
               ),
             ],
           ),
@@ -164,43 +141,40 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
-        selectedItemColor: Colors.blue, // Seçili öğe rengi
-        unselectedItemColor: Colors.grey, // Seçilmemiş öğe rengi
-        currentIndex: _selectedIndex, // Seçili sekmeyi takip ediyor
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: "Dashboard",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: "Notifications",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notifications"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
     );
   }
 
-  Widget buildEditableField(
-    String label,
-    String value,
-    Function(String) onChanged,
-  ) {
+  Widget buildEditableField(String label, String value, Function(String) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
         ),
         TextFormField(
           initialValue: value,
           onChanged: onChanged,
+          style: TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            hintText: label,
+            hintStyle: TextStyle(color: Colors.white70),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.1),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white70)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white)),
           ),
         ),
         SizedBox(height: 10),
@@ -214,7 +188,7 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Text(
           "Relatives",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
         ),
         ListView.builder(
           shrinkWrap: true,
@@ -223,12 +197,13 @@ class _ProfilePageState extends State<ProfilePage> {
           itemBuilder: (context, index) {
             final relative = user.relatives[index];
             return ListTile(
-              title: Text(relative["name"]!),
+              title: Text(relative["name"]!, style: TextStyle(color: Colors.white)),
               subtitle: Text(
                 "Phone: ${relative["phone"]!}\nEmail: ${relative["email"]!}",
+                style: TextStyle(color: Colors.white70),
               ),
               trailing: IconButton(
-                icon: Icon(Icons.delete),
+                icon: Icon(Icons.delete, color: Colors.white),
                 onPressed: () {
                   setState(() {
                     user.relatives.removeAt(index);
@@ -242,7 +217,8 @@ class _ProfilePageState extends State<ProfilePage> {
           onPressed: () {
             // TODO: Implement add relative functionality
           },
-          child: Text("Add Relative"),
+          child: Text("Add Relative",
+            style: TextStyle(color: Color.fromARGB(255, 99, 129, 203))),
         ),
       ],
     );
