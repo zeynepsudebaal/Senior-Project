@@ -1,145 +1,128 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import 'register_page.dart';
-import 'profile_page.dart';
 
-class LoginPage extends StatelessWidget {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _apiService = ApiService();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        await _apiService.login(
+          _emailController.text,
+          _passwordController.text,
+        );
+        if (mounted) {
+          // Başarılı giriş sonrası profil sayfasına yönlendir
+          Navigator.pushReplacementNamed(context, '/profile');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.indigo.shade900, Colors.indigo.shade700],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo ve Başlık
-            Column(
-              children: [
-                Icon(Icons.phone, size: 80, color: Colors.blueAccent),
-                SizedBox(height: 10),
-                Text(
-                  "YOUR SAFETY\nOUR PRIORITY",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 40),
-
-            // Email TextField
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: TextField(
+      appBar: AppBar(title: const Text('Giriş Yap')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextFormField(
                 controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'E-posta',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.emailAddress,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.2),
-                  hintText: "Email",
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Lütfen e-posta giriniz';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Geçerli bir e-posta adresi giriniz';
+                  }
+                  return null;
+                },
               ),
-            ),
-            SizedBox(height: 15),
-
-            // Password TextField
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: TextField(
+              const SizedBox(height: 16),
+              TextFormField(
                 controller: _passwordController,
+                decoration: const InputDecoration(
+                  labelText: 'Şifre',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.2),
-                  hintText: "Password",
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Lütfen şifre giriniz';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : const Text('Giriş Yap'),
                 ),
               ),
-            ),
-            SizedBox(height: 20),
-
-            // Login Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: ElevatedButton(
+              const SizedBox(height: 16),
+              TextButton(
                 onPressed: () {
-                  // Login butonuna basılınca DashboardPage'e git
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()),
+                    MaterialPageRoute(
+                      builder: (context) => const RegisterPage(),
+                    ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: Colors.blueAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    "LOGIN",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
+                child: const Text('Hesabınız yok mu? Kayıt olun'),
               ),
-            ),
-            SizedBox(height: 15),
-
-            // Forgot Password Link
-            TextButton(
-              onPressed: () {
-                print("Forgot Password clicked");
-              },
-              child: Text(
-                "Forgot your password?",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-
-            // Register Link
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
-                );
-              },
-              child: Text(
-                "Don't you have an account? Sign up",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -6,6 +6,8 @@ import 'package:senior_project/pages/profile_page.dart'; // ProfilePage'i import
 import '../widgets/button_widget.dart';
 
 class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+
   @override
   _SettingsPageState createState() => _SettingsPageState();
 }

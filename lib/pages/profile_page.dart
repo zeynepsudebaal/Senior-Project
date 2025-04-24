@@ -10,6 +10,8 @@ import '../widgets/button_widget.dart';
 import 'package:senior_project/pages/login_page.dart';
 
 class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
@@ -25,16 +27,28 @@ class _ProfilePageState extends State<ProfilePage> {
 
     switch (index) {
       case 0:
-        Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DashboardPage()),
+        );
         break;
       case 1:
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
         break;
       case 2:
-        Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => NotificationPage()),
+        );
         break;
       case 3:
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ProfilePage()),
+        );
         break;
     }
   }
@@ -51,7 +65,11 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         title: Text(
           "Profile",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: const Color.fromARGB(255, 99, 129, 203),
@@ -60,32 +78,46 @@ class _ProfilePageState extends State<ProfilePage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            Container(
+            SizedBox(
               height: 120,
               child: DrawerHeader(
-                decoration: BoxDecoration(color: const Color.fromARGB(255, 99, 129, 203)),
-                child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 99, 129, 203),
+                ),
+                child: Text(
+                  'Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24),
+                ),
               ),
             ),
             ListTile(
               leading: Icon(Icons.dashboard),
               title: Text('Dashboard'),
               onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardPage()));
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => DashboardPage()),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.settings),
               title: Text('Settings'),
               onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => SettingsPage()));
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => SettingsPage()),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.logout),
               title: Text('Log out'),
               onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
               },
             ),
           ],
@@ -102,9 +134,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: user.imagePath.startsWith('http')
-                      ? NetworkImage(user.imagePath)
-                      : AssetImage(user.imagePath) as ImageProvider,
+                  backgroundImage:
+                      user.imagePath.startsWith('http')
+                          ? NetworkImage(user.imagePath)
+                          : AssetImage(user.imagePath) as ImageProvider,
                 ),
               ),
               const SizedBox(height: 10),
@@ -133,7 +166,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () {
                   showSafetyNotification(context);
                 },
-                child: Text("Check Safety", style: TextStyle(color: Color.fromARGB(255, 99, 129, 203))),
+                child: Text(
+                  "Check Safety",
+                  style: TextStyle(color: Color.fromARGB(255, 99, 129, 203)),
+                ),
               ),
             ],
           ),
@@ -146,22 +182,36 @@ class _ProfilePageState extends State<ProfilePage> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: "Dashboard",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notifications"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: "Notifications",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
     );
   }
 
-  Widget buildEditableField(String label, String value, Function(String) onChanged) {
+  Widget buildEditableField(
+    String label,
+    String value,
+    Function(String) onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         TextFormField(
           initialValue: value,
@@ -172,9 +222,18 @@ class _ProfilePageState extends State<ProfilePage> {
             hintStyle: TextStyle(color: Colors.white70),
             filled: true,
             fillColor: Colors.white.withOpacity(0.1),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white70)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.white),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.white70),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.white),
+            ),
           ),
         ),
         SizedBox(height: 10),
@@ -188,7 +247,11 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Text(
           "Relatives",
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         ListView.builder(
           shrinkWrap: true,
@@ -197,7 +260,10 @@ class _ProfilePageState extends State<ProfilePage> {
           itemBuilder: (context, index) {
             final relative = user.relatives[index];
             return ListTile(
-              title: Text(relative["name"]!, style: TextStyle(color: Colors.white)),
+              title: Text(
+                relative["name"]!,
+                style: TextStyle(color: Colors.white),
+              ),
               subtitle: Text(
                 "Phone: ${relative["phone"]!}\nEmail: ${relative["email"]!}",
                 style: TextStyle(color: Colors.white70),
@@ -217,8 +283,10 @@ class _ProfilePageState extends State<ProfilePage> {
           onPressed: () {
             // TODO: Implement add relative functionality
           },
-          child: Text("Add Relative",
-            style: TextStyle(color: Color.fromARGB(255, 99, 129, 203))),
+          child: Text(
+            "Add Relative",
+            style: TextStyle(color: Color.fromARGB(255, 99, 129, 203)),
+          ),
         ),
       ],
     );
