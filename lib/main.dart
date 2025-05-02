@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pages/login_page.dart';
+import 'pages/chat_page.dart';
+import 'pages/dashboard_page.dart';
 import 'pages/profile_page.dart';
 
 void main() {
@@ -12,6 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -19,7 +22,9 @@ class MyApp extends StatelessWidget {
       ),
       home: const LoginPage(),
       routes: {
-        '/profile': (context) => const ProfilePage(), // Profile sayfası route'u
+        '/dashboard': (context) => const DashboardPage(),
+        '/chat': (context) => const ChatScreen(),
+        '/profile': (context) => const ProfilePage(),
       },
     );
   }

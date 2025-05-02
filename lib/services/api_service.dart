@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.46:3000/api';
+  static const String baseUrl = 'http://192.168.1.60:3000/api';
   final storage = const FlutterSecureStorage();
 
   Future<Map<String, dynamic>> login(String email, String password) async {
