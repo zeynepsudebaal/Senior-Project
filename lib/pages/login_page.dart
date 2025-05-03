@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../utils/user_data.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -30,15 +31,27 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       try {
-        await _apiService.login(
+        final response = await _apiService.login(
           _emailController.text,
           _passwordController.text,
         );
+
+        print('Login response: $response');
+        print('Response type: ${response.runtimeType}');
+        print('Response keys: ${response.keys.toList()}');
+        print('User data in response: ${response['user']}');
+
+        // Kullanıcı bilgilerini ve token'ı kaydet
+        await UserData.updateUser(response);
+        print('Token saved: ${UserData.myUser.token}');
+        print('User ID saved: ${UserData.myUser.id}');
+
         if (mounted) {
           // Başarılı giriş sonrası profil sayfasına yönlendir
           Navigator.pushReplacementNamed(context, '/profile');
         }
       } catch (e) {
+        print('Login error: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,

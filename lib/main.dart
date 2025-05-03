@@ -3,8 +3,30 @@ import 'pages/login_page.dart';
 import 'pages/chat_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/profile_page.dart';
+import 'services/api_service.dart';
+import 'utils/user_data.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Uygulama başlatıldığında token'ı yükle
+  final token = await UserData.getToken();
+  if (token != null) {
+    try {
+      // Token varsa kullanıcı bilgilerini güncelle
+      await UserData.updateUser({
+        'token': token,
+        'user': {
+          'id': UserData.myUser.id,
+          'email': UserData.myUser.email,
+          'username': UserData.myUser.name,
+        },
+      });
+    } catch (e) {
+      print('Error updating user data: $e');
+    }
+  }
+
   runApp(const MyApp());
 }
 

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/notifications_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
-import '../models/message.dart';
 import '../services/chat_service.dart';
 import '../utils/user_data.dart';
+import '../services/api_service.dart';
 
 void main() {
   runApp(MyApp());
@@ -24,24 +24,28 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  List<Message> _messages = [];
-  int _selectedIndex = 1;
-
+  final ChatService _chatService = ChatService();
   String? _chatId;
-  final String _adminId = 'web';
-  final String _userId = 'userUID'; // Kullanıcı ID'si
+  String? _userId;
+  String _adminId = 'web';
+  List<Message> _messages = [];
+  bool _isLoading = true;
   bool _loading = true;
+  int _selectedIndex = 1;
+  String? _error;
 
-  Timer? _timer; // <<< Timer ekliyoruz
+  Timer? _timer;
+  final _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
+    _initializeUser();
     _initializeChat();
 
     _timer = Timer.periodic(Duration(seconds: 5), (timer) {
@@ -53,27 +57,84 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel(); // <<< Timer'ı durduruyoruz
+    _timer?.cancel();
     _messageController.dispose();
     super.dispose();
   }
 
+  Future<void> _initializeUser() async {
+    try {
+      final userId = UserData.myUser.id;
+      if (userId == null || userId.isEmpty) {
+        setState(() {
+          _error =
+              'Kullanıcı bilgileri yüklenemedi. Lütfen tekrar giriş yapın.';
+          _loading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _userId = userId;
+      });
+
+      // Admin ID'sini al
+      _adminId = await _apiService.getAdminId();
+      if (_adminId == null || _adminId.isEmpty) {
+        setState(() {
+          _error =
+              'Admin bilgileri alınamadı. Lütfen daha sonra tekrar deneyin.';
+          _loading = false;
+        });
+        return;
+      }
+
+      await _initializeChat();
+    } catch (e) {
+      print('Kullanıcı başlatılırken hata oluştu: $e');
+      setState(() {
+        _error = 'Bir hata oluştu: $e';
+        _loading = false;
+      });
+    }
+  }
+
   Future<void> _initializeChat() async {
     try {
-      _chatId = await ChatService.startChat(_adminId, _userId);
-      await _loadMessages();
+      setState(() {
+        _isLoading = true;
+      });
+
+      _userId = UserData.myUser.id;
+      if (_userId == null) {
+        throw Exception('Kullanıcı bilgileri yüklenemedi');
+      }
+
+      _chatId = await _chatService.startChat(_adminId, _userId!);
+      if (_chatId != null) {
+        await _loadMessages();
+      }
     } catch (e) {
-      print('Chat başlatılırken hata oluştu: $e');
+      print('Chat başlatma hatası: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chat başlatılamadı: $e')),
+        );
+      }
     }
   }
 
   Future<void> _loadMessages() async {
     if (_chatId == null) return;
     try {
-      final messages = await ChatService.fetchMessages(_chatId!);
+      final messages = await _chatService.fetchMessages(_chatId!);
       setState(() {
         _messages = messages;
         _loading = false;
+        _isLoading = false;
       });
     } catch (e) {
       print('Mesajlar yüklenirken hata oluştu: $e');
@@ -81,29 +142,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty || _chatId == null) return;
+    if (_messageController.text.trim().isEmpty || _chatId == null) return;
 
     try {
-      await ChatService.sendMessage(_chatId!, _userId, text);
-
-      setState(() {
-        _messages.add(
-          Message(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            senderId: _userId,
-            senderName: UserData.myUser.name,
-            senderEmail: UserData.myUser.email,
-            text: text,
-            sentAt: DateTime.now(),
-            read: false,
-          ),
-        );
-      });
-
+      await _chatService.sendMessage(_chatId!, _messageController.text.trim());
       _messageController.clear();
+      await _loadMessages(); // Mesajı gönderdikten sonra mesajları yenile
     } catch (e) {
-      print('Mesaj gönderilirken hata oluştu: $e');
+      print('Mesaj gönderme hatası: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mesaj gönderilemedi: $e')),
+        );
+      }
     }
   }
 
@@ -144,103 +195,100 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: const Color.fromARGB(255, 99, 129, 203),
         automaticallyImplyLeading: false,
       ),
-      body:
-          _loading
-              ? Center(child: CircularProgressIndicator())
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(_error!),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(context, '/login');
+                        },
+                        child: Text('Giriş Sayfasına Dön'),
+                      ),
+                    ],
+                  ),
+                )
               : Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.all(8),
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final msg = _messages[index];
-                        bool isMe = msg.senderId == _userId;
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        reverse: true,
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final message =
+                              _messages[_messages.length - 1 - index];
+                          final isMe = message.senderId == _userId;
 
-                        return Align(
-                          alignment:
-                              isMe
-                                  ? Alignment.centerRight
-                                  : Alignment.centerLeft,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(
-                              vertical: 4,
-                              horizontal: 8,
-                            ),
-                            padding: EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color:
-                                  isMe ? Colors.blueAccent : Colors.grey[300],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment:
-                                  isMe
-                                      ? CrossAxisAlignment.end
-                                      : CrossAxisAlignment.start,
-                              children: [
-                                if (!isMe) ...[
+                          return Align(
+                            alignment: isMe
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isMe ? Colors.blue : Colors.grey[300],
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    msg.senderName,
+                                    message.text,
                                     style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                      color: Colors.black87,
+                                      color: isMe ? Colors.white : Colors.black,
                                     ),
                                   ),
-                                  SizedBox(height: 2),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    message.senderName,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isMe
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
                                 ],
-                                Text(
-                                  msg.text,
-                                  style: TextStyle(
-                                    color: isMe ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  '${msg.sentAt.hour}:${msg.sentAt.minute.toString().padLeft(2, '0')}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color:
-                                        isMe
-                                            ? Colors.white70
-                                            : Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            decoration: InputDecoration(
-                              hintText: 'Mesajınızı yazın...',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide.none,
                               ),
-                              filled: true,
-                              fillColor: Colors.grey[200],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              decoration: const InputDecoration(
+                                hintText: 'Mesajınızı yazın...',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.send),
-                          onPressed: _sendMessage,
-                        ),
-                      ],
+                          IconButton(
+                            icon: const Icon(Icons.send),
+                            onPressed: _sendMessage,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         selectedItemColor: Colors.blue,
