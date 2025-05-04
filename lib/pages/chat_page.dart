@@ -46,13 +46,6 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _initializeUser();
-    _initializeChat();
-
-    _timer = Timer.periodic(Duration(seconds: 5), (timer) {
-      if (_chatId != null) {
-        _loadMessages();
-      }
-    });
   }
 
   @override
@@ -64,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initializeUser() async {
     try {
-      final userId = UserData.myUser.id;
+      final userId = await UserData.getUserId();
       if (userId == null || userId.isEmpty) {
         setState(() {
           _error =
@@ -105,7 +98,6 @@ class _ChatScreenState extends State<ChatScreen> {
         _isLoading = true;
       });
 
-      _userId = UserData.myUser.id;
       if (_userId == null) {
         throw Exception('Kullanıcı bilgileri yüklenemedi');
       }
@@ -113,6 +105,13 @@ class _ChatScreenState extends State<ChatScreen> {
       _chatId = await _chatService.startChat(_adminId, _userId!);
       if (_chatId != null) {
         await _loadMessages();
+
+        // Start the timer only after chat is initialized
+        _timer = Timer.periodic(Duration(seconds: 5), (timer) {
+          if (_chatId != null) {
+            _loadMessages();
+          }
+        });
       }
     } catch (e) {
       print('Chat başlatma hatası: $e');
