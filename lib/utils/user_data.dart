@@ -57,7 +57,7 @@ class UserData {
       );
 
       if (data['token'] != null) {
-        await _storage.write(key: 'token', value: data['token']);
+        await saveToken(data['token']);
       }
     } catch (e) {
       print('Error updating user: $e');
@@ -69,8 +69,21 @@ class UserData {
     return await _storage.read(key: 'auth_token');
   }
 
+  static Future<void> saveToken(String token) async {
+    await _storage.write(key: 'auth_token', value: token);
+  }
+
+  static Future<String?> getUserId() async {
+    return await _storage.read(key: 'user_id');
+  }
+
+  static Future<void> saveUserId(String userId) async {
+    await _storage.write(key: 'user_id', value: userId);
+  }
+
   static Future<void> clearToken() async {
     await _storage.delete(key: 'auth_token');
+    await clearUserId();
     myUser = User(
       id: null,
       imagePath: myUser.imagePath,
@@ -81,5 +94,9 @@ class UserData {
       isDarkMode: myUser.isDarkMode,
       relatives: myUser.relatives,
     );
+  }
+
+  static Future<void> clearUserId() async {
+    await _storage.delete(key: 'user_id');
   }
 }

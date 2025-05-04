@@ -15,6 +15,19 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('Login response: $data');
+        print('Response type: ${data.runtimeType}');
+        print('Response keys: ${data.keys.toList()}');
+        print('User data in response: ${data['user']}');
+
+        // Save token and user data
+        if (data['token'] != null && data['user'] != null) {
+          await UserData.saveToken(data['token']);
+          await UserData.saveUserId(data['user']['id']);
+          print('Token saved: ${data['token']}');
+          print('User ID saved: ${data['user']['id']}');
+        }
+
         return data;
       } else {
         throw Exception('Giriş başarısız: ${response.body}');
@@ -38,6 +51,16 @@ class ApiService {
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
+        print('Register response: $data');
+
+        // Save token and user data
+        if (data['token'] != null && data['user'] != null) {
+          await UserData.saveToken(data['token']);
+          await UserData.saveUserId(data['user']['id']);
+          print('Token saved: ${data['token']}');
+          print('User ID saved: ${data['user']['id']}');
+        }
+
         return data;
       } else {
         throw Exception('Kayıt başarısız: ${response.body}');
@@ -53,6 +76,7 @@ class ApiService {
 
   Future<void> logout() async {
     await UserData.clearToken();
+    await UserData.clearUserId();
   }
 
   Future<String> getAdminId() async {
