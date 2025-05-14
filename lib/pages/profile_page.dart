@@ -4,10 +4,11 @@ import 'package:senior_project/pages/notifications_page.dart';
 import 'package:senior_project/pages/showDialog.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/settings_page.dart';
+import 'package:senior_project/pages/login_page.dart';
+import 'package:senior_project/services/auth_service.dart';
 import '../models/user.dart';
 import '../utils/user_data.dart';
 import '../widgets/button_widget.dart';
-import 'package:senior_project/pages/login_page.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -17,6 +18,204 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   User user = UserData.myUser;
   int _selectedIndex = 3;
+  final AuthService _authService = AuthService();
+  bool _isLoading = true;
+  String? _errorMessage;
+  Map<String, dynamic>? _userProfile;
+
+  // List of common email domains
+  static final List<String> _commonDomains = [
+    'gmail.com',
+    'yahoo.com',
+    'hotmail.com',
+    'outlook.com',
+    'icloud.com',
+  ];
+
+  // Email validation regex
+  static final _emailRegex = RegExp(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+  );
+
+  // Corrected phone validation regex
+  static final _phoneRegex = RegExp(
+    r'^\+?[1-9]\d{1,14}$'
+  );
+
+  // Suggest a domain if a common typo is detected
+  String? _suggestDomain(String email) {
+    final parts = email.split('@');
+    if (parts.length != 2) return null;
+    final domain = parts[1];
+    for (final commonDomain in _commonDomains) {
+      if (_levenshteinDistance(domain, commonDomain) == 1) {
+        return commonDomain;
+      }
+    }
+    return null;
+  }
+
+  // Calculate Levenshtein distance
+  int _levenshteinDistance(String s, String t) {
+    if (s == t) return 0;
+    if (s.isEmpty) return t.length;
+    if (t.isEmpty) return s.length;
+
+    final v0 = List<int>.generate(t.length + 1, (i) => i);
+    final v1 = List<int>.filled(t.length + 1, 0);
+
+    for (var i = 0; i < s.length; i++) {
+      v1[0] = i + 1;
+      for (var j = 0; j < t.length; j++) {
+        final cost = s[i] == t[j] ? 0 : 1;
+        v1[j + 1] = [
+          v1[j] + 1,
+          v0[j + 1] + 1,
+          v0[j] + cost
+        ].reduce((a, b) => a < b ? a : b);
+      }
+      for (var j = 0; j < v0.length; j++) {
+        v0[j] = v1[j];
+      }
+    }
+    return v1[t.length];
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Email is required';
+    }
+    if (!_emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+    final suggestion = _suggestDomain(value);
+    if (suggestion != null) {
+      return 'Did you mean ${value.split('@')[0]}@$suggestion?';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Phone number is required';
+    }
+    if (!_phoneRegex.hasMatch(value)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUserData();
+  }
+
+  Future<void> _initializeUserData() async {
+    // First try to get the user data from UserData
+    if (UserData.myUser.email != 'No Email') {
+      setState(() {
+        user = UserData.myUser;
+        _isLoading = false;
+      });
+    }
+
+    // Then fetch the latest data from the server
+    await _fetchUserProfile();
+    await _fetchRelatives();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final profileData = await _authService.getUserProfile();
+      print('Received profile data: $profileData');
+
+      if (!mounted) return;
+
+      setState(() {
+        _userProfile = profileData['user'];
+        user = User(
+          imagePath: 'https://via.placeholder.com/150',
+          name: _userProfile!['name'] ?? user.name,
+          surname: _userProfile!['surname'] ?? user.surname,
+          email: _userProfile!['email'] ?? user.email,
+          phone: _userProfile!['phoneNumber'] ?? user.phone,
+          address: _userProfile!['address'] ?? user.address,
+          isDarkMode: false,
+          relatives: user.relatives,
+        );
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Profile fetch error in UI: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+
+      // If unauthorized, redirect to login
+      if (_errorMessage?.contains('Unauthorized') == true) {
+        await _authService.removeToken();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+        );
+      }
+    }
+  }
+
+  Future<void> _fetchRelatives() async {
+    try {
+      print('Profile page: Fetching relatives...');
+      setState(() {
+        _isLoading = true;
+      });
+
+      final response = await _authService.getRelatives();
+      print('Profile page: Relatives response: $response');
+
+      if (response['success'] == true && response['relatives'] != null) {
+        print('Profile page: Successfully fetched relatives: ${response['relatives']}');
+        setState(() {
+          user.relatives = (response['relatives'] as List).map((relative) {
+            return {
+              'id': relative['id']?.toString() ?? '',
+              'name': relative['name']?.toString() ?? '',
+              'surname': relative['surname']?.toString() ?? '',
+              'email': relative['email']?.toString() ?? '',
+              'phone': relative['phone']?.toString() ?? '',
+            };
+          }).toList();
+          print('Profile page: Updated user.relatives: ${user.relatives}');
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        print('Profile page: Failed to fetch relatives: ${response['message']}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Profile page: Error fetching relatives: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load relatives: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -39,13 +238,309 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _onDrawerItemTapped(int index) {
-    Navigator.pop(context);
-    _onItemTapped(index);
+  Future<void> _logout() async {
+    await _authService.removeToken();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+  }
+
+  Future<void> _showAddRelativeDialog() async {
+    final nameController = TextEditingController();
+    final surnameController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    final _formKey = GlobalKey<FormState>();
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Relative'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: 'Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: surnameController,
+                  decoration: InputDecoration(labelText: 'Surname'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Surname is required';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: emailController,
+                  decoration: InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validateEmail,
+                ),
+                TextFormField(
+                  controller: phoneController,
+                  decoration: InputDecoration(labelText: 'Phone'),
+                  keyboardType: TextInputType.phone,
+                  validator: _validatePhone,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!_formKey.currentState!.validate()) {
+                return;
+              }
+
+              try {
+                setState(() {
+                  _isLoading = true;
+                });
+
+                final response = await _authService.addRelative(
+                  nameController.text,
+                  surnameController.text,
+                  emailController.text,
+                  phoneController.text,
+                );
+
+                if (!mounted) return;
+
+                if (response['success'] == true) {
+                  // Close the dialog
+                  Navigator.pop(context);
+
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Relative added successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // Refresh the relatives list
+                  await _fetchRelatives();
+
+                  // Force a rebuild of the widget
+                  setState(() {
+                    _isLoading = false;
+                  });
+                } else {
+                  setState(() {
+                    _isLoading = false;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(response['message'] ?? 'Failed to add relative'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (!mounted) return;
+                setState(() {
+                  _isLoading = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceAll('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showEditRelativeDialog(Map<String, String> relative) async {
+    final nameController = TextEditingController(text: relative['name']);
+    final surnameController = TextEditingController(text: relative['surname']);
+    final emailController = TextEditingController(text: relative['email']);
+    final phoneController = TextEditingController(text: relative['phone']);
+
+    final _formKey = GlobalKey<FormState>();
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Relative'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: 'Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: surnameController,
+                  decoration: InputDecoration(labelText: 'Surname'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Surname is required';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: emailController,
+                  decoration: InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validateEmail,
+                ),
+                TextFormField(
+                  controller: phoneController,
+                  decoration: InputDecoration(labelText: 'Phone'),
+                  keyboardType: TextInputType.phone,
+                  validator: _validatePhone,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!_formKey.currentState!.validate()) {
+                return;
+              }
+
+              try {
+                final response = await _authService.updateRelative(
+                  relative['id']!,
+                  nameController.text,
+                  surnameController.text,
+                  emailController.text,
+                  phoneController.text,
+                );
+
+                if (response['success'] == true) {
+                  await _fetchRelatives();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Relative updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceAll('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteRelative(String relativeId) async {
+    try {
+      final response = await _authService.deleteRelative(relativeId);
+      if (response['success'] == true) {
+        await _fetchRelatives();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Relative deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Loading profile...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchUserProfile,
+                child: Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 99, 129, 203),
       appBar: AppBar(
@@ -55,6 +550,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              setState(() {
+                _isLoading = true;
+              });
+              _fetchUserProfile();
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -84,9 +590,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ListTile(
               leading: Icon(Icons.logout),
               title: Text('Log out'),
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
-              },
+              onTap: _logout,
             ),
           ],
         ),
@@ -108,8 +612,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               const SizedBox(height: 10),
-              buildEditableField("Name-Surname", user.name, (newValue) {
+              buildEditableField("Name", user.name, (newValue) {
                 setState(() => user.name = newValue);
+              }),
+              buildEditableField("Surname", user.surname, (newValue) {
+                setState(() => user.surname = newValue);
               }),
               buildEditableField("Email", user.email, (newValue) {
                 setState(() => user.email = newValue);
@@ -125,8 +632,51 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 20),
               ButtonWidget(
                 text: "Save Changes",
-                onClicked: () {
-                  print("Changes saved");
+                onClicked: () async {
+                  try {
+                    setState(() {
+                      _isLoading = true;
+                    });
+
+                    final response = await _authService.updateProfile(
+                      user.name,
+                      user.surname,
+                      user.phone,
+                      user.address,
+                    );
+
+                    if (!mounted) return;
+
+                    if (response['success'] == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Profile updated successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(response['message'] ?? 'Failed to update profile'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString().replaceAll('Exception: ', '')),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
+                  }
                 },
               ),
               ElevatedButton(
@@ -186,40 +736,93 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Relatives",
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: user.relatives.length,
-          itemBuilder: (context, index) {
-            final relative = user.relatives[index];
-            return ListTile(
-              title: Text(relative["name"]!, style: TextStyle(color: Colors.white)),
-              subtitle: Text(
-                "Phone: ${relative["phone"]!}\nEmail: ${relative["email"]!}",
-                style: TextStyle(color: Colors.white70),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Relatives",
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            ElevatedButton(
+              onPressed: _showAddRelativeDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
-              trailing: IconButton(
-                icon: Icon(Icons.delete, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    user.relatives.removeAt(index);
-                  });
-                },
+              child: Text(
+                "Add Relative",
+                style: TextStyle(color: Color.fromARGB(255, 99, 129, 203)),
               ),
-            );
-          },
+            ),
+          ],
         ),
-        ElevatedButton(
-          onPressed: () {
-            // TODO: Implement add relative functionality
-          },
-          child: Text("Add Relative",
-            style: TextStyle(color: Color.fromARGB(255, 99, 129, 203))),
-        ),
+        SizedBox(height: 16),
+        if (_isLoading)
+          Center(child: CircularProgressIndicator(color: Colors.white))
+        else if (user.relatives.isEmpty)
+          Center(
+            child: Text(
+              "No relatives added yet",
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: user.relatives.length,
+            itemBuilder: (context, index) {
+              final relative = user.relatives[index];
+              return Card(
+                color: Colors.white.withOpacity(0.1),
+                margin: EdgeInsets.only(bottom: 8),
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${relative['name']} ${relative['surname']}",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit, color: Colors.white),
+                                onPressed: () => _showEditRelativeDialog(relative),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.white),
+                                onPressed: () => _deleteRelative(relative['id']!),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "Email: ${relative['email']}",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Phone: ${relative['phone']}",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }

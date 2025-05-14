@@ -1,6 +1,7 @@
 class User {
   String imagePath;
   String name;
+  String surname;
   String email;
   String phone;
   String address;
@@ -10,6 +11,7 @@ class User {
   User({
     required this.imagePath,
     required this.name,
+    required this.surname,
     required this.email,
     required this.phone,
     required this.address,
