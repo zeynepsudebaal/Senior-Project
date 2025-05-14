@@ -57,65 +57,89 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initializeUser() async {
     try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
       final userId = await UserData.getUserId();
       if (userId == null || userId.isEmpty) {
         setState(() {
-          _error =
-              'Kullanıcı bilgileri yüklenemedi. Lütfen tekrar giriş yapın.';
+          _error = 'Kullanıcı bilgileri yüklenemedi. Lütfen tekrar giriş yapın.';
           _loading = false;
+          _isLoading = false;
         });
         return;
       }
 
+      print('User ID loaded: $userId');
       setState(() {
         _userId = userId;
       });
 
       // Admin ID'sini al
       _adminId = await _apiService.getAdminId();
-      if (_adminId == null || _adminId.isEmpty) {
+      if (_adminId.isEmpty) {
         setState(() {
-          _error =
-              'Admin bilgileri alınamadı. Lütfen daha sonra tekrar deneyin.';
+          _error = 'Admin bilgileri alınamadı. Lütfen daha sonra tekrar deneyin.';
           _loading = false;
+          _isLoading = false;
         });
         return;
       }
 
+      print('Admin ID loaded: $_adminId');
       await _initializeChat();
     } catch (e) {
-      print('Kullanıcı başlatılırken hata oluştu: $e');
+      print('User initialization error: $e');
       setState(() {
         _error = 'Bir hata oluştu: $e';
         _loading = false;
+        _isLoading = false;
       });
     }
   }
 
   Future<void> _initializeChat() async {
+    if (_userId == null || _userId!.isEmpty) {
+      print('Cannot initialize chat: User ID is missing');
+      return;
+    }
+
     try {
       setState(() {
         _isLoading = true;
       });
 
-      if (_userId == null) {
-        throw Exception('Kullanıcı bilgileri yüklenemedi');
-      }
-
+      print('Starting chat with admin: $_adminId and user: $_userId');
       _chatId = await _chatService.startChat(_adminId, _userId!);
-      if (_chatId != null) {
+      
+      if (_chatId != null && _chatId!.isNotEmpty) {
+        print('Chat initialized with ID: $_chatId');
         await _loadMessages();
 
-        // Start the timer only after chat is initialized
+        // Cancel existing timer if any
+        _timer?.cancel();
+        
+        // Start new timer for message updates
         _timer = Timer.periodic(Duration(seconds: 5), (timer) {
-          if (_chatId != null) {
+          if (_chatId != null && mounted) {
             _loadMessages();
           }
         });
+
+        setState(() {
+          _loading = false;
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('Invalid chat ID received');
       }
     } catch (e) {
-      print('Chat başlatma hatası: $e');
+      print('Chat initialization error: $e');
       setState(() {
+        _error = 'Chat başlatılamadı: $e';
+        _loading = false;
         _isLoading = false;
       });
       if (mounted) {
@@ -127,28 +151,44 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadMessages() async {
-    if (_chatId == null) return;
+    if (_chatId == null || _chatId!.isEmpty) {
+      print('Cannot load messages: Chat ID is missing');
+      return;
+    }
+
     try {
       final messages = await _chatService.fetchMessages(_chatId!);
-      setState(() {
-        _messages = messages;
-        _loading = false;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _messages = messages;
+          _loading = false;
+          _isLoading = false;
+          _error = null;
+        });
+      }
     } catch (e) {
-      print('Mesajlar yüklenirken hata oluştu: $e');
+      print('Message loading error: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Mesajlar yüklenirken hata oluştu: $e';
+        });
+      }
     }
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _chatId == null) return;
-
+    final messageText = _messageController.text.trim();
+    if (messageText.isEmpty || _chatId == null) {
+      print('Cannot send message: ${messageText.isEmpty ? "Empty message" : "Chat ID is missing"}');
+      return;
+    }
+    
     try {
-      await _chatService.sendMessage(_chatId!, _messageController.text.trim());
+      await _chatService.sendMessage(_chatId!, messageText);
       _messageController.clear();
-      await _loadMessages(); // Mesajı gönderdikten sonra mesajları yenile
+      await _loadMessages();
     } catch (e) {
-      print('Mesaj gönderme hatası: $e');
+      print('Message sending error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Mesaj gönderilemedi: $e')),

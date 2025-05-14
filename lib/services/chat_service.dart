@@ -6,12 +6,11 @@ import '../models/message.dart';
 import '../models/user.dart';
 
 class ChatService {
-  static const String baseUrl = 'http://192.168.1.60:3000/api';
+  static const String baseUrl = 'http://localhost:3000/api';
 
   Future<String> startChat(String adminId, String userId) async {
     try {
       final token = await UserData.getToken();
-      print('Starting chat with token: $token');
 
       final response = await http.post(
         Uri.parse('$baseUrl/web/chat/start'),
@@ -27,7 +26,9 @@ class ChatService {
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('Chat start response: ${response.body}');
+        if (data['chatId'] == null) {
+          throw Exception('Chat ID is missing from response');
+        }
         return data['chatId'];
       } else {
         throw Exception('Chat başlatılamadı: ${response.body}');
@@ -41,7 +42,9 @@ class ChatService {
   Future<List<Message>> fetchMessages(String chatId) async {
     try {
       final token = await UserData.getToken();
-      print('Fetching messages with token: $token');
+      if (token == null || token.isEmpty) {
+        throw Exception('Token is missing');
+      }
 
       final response = await http.get(
         Uri.parse('$baseUrl/web/chat/conversation/$chatId'),
@@ -53,7 +56,6 @@ class ChatService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        print('Fetch messages response: $data');
         return data.map((json) => Message.fromJson(json)).toList();
       } else {
         throw Exception('Mesajlar alınamadı: ${response.body}');
@@ -67,7 +69,9 @@ class ChatService {
   Future<void> sendMessage(String chatId, String text) async {
     try {
       final token = await UserData.getToken();
-      print('Sending message with token: $token');
+      if (token == null || token.isEmpty) {
+        throw Exception('Token is missing');
+      }
 
       final response = await http.post(
         Uri.parse('$baseUrl/web/chat/send'),
@@ -81,9 +85,7 @@ class ChatService {
         }),
       );
 
-      if (response.statusCode == 201) {
-        print('Send message response: ${response.body}');
-      } else {
+      if (response.statusCode != 201) {
         throw Exception('Mesaj gönderilemedi: ${response.body}');
       }
     } catch (e) {
@@ -113,17 +115,34 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
-    return Message(
-      id: json['id'] as String,
-      senderId: json['senderId'] as String,
-      senderName: json['senderName'] as String,
-      senderEmail: json['senderEmail'] as String,
-      text: json['text'] as String,
-      sentAt: json['sentAt'] is Map
-          ? DateTime.fromMillisecondsSinceEpoch(
-              (json['sentAt']['_seconds'] as int) * 1000)
-          : DateTime.parse(json['sentAt'] as String),
-      read: json['read'] as bool,
-    );
+    try {
+      return Message(
+        id: json['id']?.toString() ?? '',
+        senderId: json['senderId']?.toString() ?? '',
+        senderName: json['senderName']?.toString() ?? 'Unknown User',
+        senderEmail: json['senderEmail']?.toString() ?? '',
+        text: json['text']?.toString() ?? '',
+        sentAt: json['sentAt'] == null
+            ? DateTime.now()
+            : json['sentAt'] is Map
+                ? DateTime.fromMillisecondsSinceEpoch(
+                    (json['sentAt']['_seconds'] as int) * 1000)
+                : DateTime.parse(json['sentAt'].toString()),
+        read: json['read'] as bool? ?? false,
+      );
+    } catch (e) {
+      print('Error parsing message: $json');
+      print('Error details: $e');
+      // Return a default message in case of parsing error
+      return Message(
+        id: '',
+        senderId: '',
+        senderName: 'Error',
+        senderEmail: '',
+        text: 'Message could not be loaded',
+        sentAt: DateTime.now(),
+        read: false,
+      );
+    }
   }
 }
