@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:senior_project/pages/login_page.dart';
 import 'package:senior_project/pages/chat_page.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
 import 'package:senior_project/services/auth_service.dart';
-
-void main() {
-  runApp(MyApp());
-}
+import 'firebase_options.dart';
 
 class MyApp extends StatelessWidget {
   final AuthService _authService = AuthService();
@@ -65,4 +63,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     return _isLoggedIn ? ProfilePage() : LoginPage();
   }
-} 
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(MyApp());
+}

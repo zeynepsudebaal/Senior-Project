@@ -137,9 +137,9 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      // Check if email exists first
+      // Sadece email kontrolü yap, kayıt işlemi yapma!
       final checkEmailResponse = await _authService.checkEmailExists(_emailController.text);
-      
+
       if (checkEmailResponse['exists'] == true) {
         setState(() {
           _errorMessage = 'This email is already registered';
@@ -148,8 +148,7 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // If we get here, the email is valid and not registered
-      // Navigate to AddRelativesPopup
+      // Email uygunsa AddRelativesPopup'a yönlendir
       if (!mounted) return;
       Navigator.push(
         context,

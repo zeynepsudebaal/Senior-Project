@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "152990228183",
+    "project_id": "bitirme-c0dd9",
+    "storage_bucket": "bitirme-c0dd9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:152990228183:android:dcef2366e23f030b155a92",
+        "android_client_info": {
+          "package_name": "com.example.senior_project"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "152990228183-kmud2l35rpjkreefj40gi62hpni71adt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBB9bran5gFny8IG8t7j9o91glL3dVl62s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "152990228183-kmud2l35rpjkreefj40gi62hpni71adt.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "152990228183-mf34pbmpvs84gn2f2tq100u87f0vg61o.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.seniorProject"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

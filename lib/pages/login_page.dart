@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'register_page.dart';
 import 'profile_page.dart';
 import '../services/auth_service.dart';
 import '../models/user_data.dart';
-import '../models/user.dart';
+import '../models/user.dart' as my_model;
 
 class LoginPage extends StatefulWidget {
   @override
@@ -35,12 +36,21 @@ class _LoginPageState extends State<LoginPage> {
         _emailController.text,
         _passwordController.text,
       );
-      
+
       if (response['success'] == true) {
+        try {
+          // ✅ Firebase giriş
+          await fb_auth.FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+          print('Firebase login successful');
+        } catch (e) {
+          print('Firebase login failed: $e');
+        }
+
         if (!mounted) return;
-        
-        // Store the user data in UserData
-        UserData.myUser = User(
+        UserData.myUser = my_model.User(
           imagePath: 'https://via.placeholder.com/150',
           name: response['user']['name'] ?? 'No Name',
           surname: response['user']['surname'] ?? 'No Surname',
@@ -51,13 +61,9 @@ class _LoginPageState extends State<LoginPage> {
           relatives: [],
         );
 
-        // Wait to ensure token is properly saved
         await Future.delayed(Duration(milliseconds: 300));
-
-        // Verify token is available before proceeding
         final token = await _authService.getToken();
-        print('Verifying token before proceeding: ${token != null ? 'Token exists' : 'No token found'}');
-        
+
         if (token == null) {
           setState(() {
             _errorMessage = 'Authentication failed. Please try again.';
@@ -66,51 +72,27 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
-        // Fetch user profile first to ensure authentication is working
-        try {
-          print('Fetching user profile to verify authentication...');
-          final profileResponse = await _authService.getUserProfile();
-          print('Profile response: $profileResponse');
-          
-          if (profileResponse['success'] == true) {
-            // Now fetch relatives after confirming authentication works
-            try {
-              print('Fetching relatives after login...');
-              final relativesResponse = await _authService.getRelatives();
-              print('Relatives response: $relativesResponse');
-              
-              if (relativesResponse['success'] == true && relativesResponse['relatives'] != null) {
-                print('Successfully fetched relatives: ${relativesResponse['relatives']}');
-                UserData.myUser.relatives = (relativesResponse['relatives'] as List).map((relative) {
-                  return {
-                    'id': relative['id']?.toString() ?? '',
-                    'name': relative['name']?.toString() ?? '',
-                    'surname': relative['surname']?.toString() ?? '',
-                    'email': relative['email']?.toString() ?? '',
-                    'phone': relative['phone']?.toString() ?? '',
-                  };
-                }).toList();
-                print('Updated UserData.myUser.relatives: ${UserData.myUser.relatives}');
-              } else {
-                print('Failed to fetch relatives: ${relativesResponse['message']}');
-              }
-            } catch (e) {
-              print('Error fetching relatives during login: $e');
-              // Continue with login even if relatives fetch fails
+        final profileResponse = await _authService.getUserProfile();
+        if (profileResponse['success'] == true) {
+          try {
+            final relativesResponse = await _authService.getRelatives();
+            if (relativesResponse['success'] == true && relativesResponse['relatives'] != null) {
+              UserData.myUser.relatives = (relativesResponse['relatives'] as List).map((relative) {
+                return {
+                  'id': relative['id']?.toString() ?? '',
+                  'name': relative['name']?.toString() ?? '',
+                  'surname': relative['surname']?.toString() ?? '',
+                  'email': relative['email']?.toString() ?? '',
+                  'phone': relative['phone']?.toString() ?? '',
+                };
+              }).toList();
             }
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => ProfilePage()),
-            );
-          } else {
-            setState(() {
-              _errorMessage = 'Authentication failed. Please try again.';
-              _isLoading = false;
-            });
-          }
-        } catch (e) {
-          print('Error verifying authentication after login: $e');
+          } catch (_) {}
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ProfilePage()),
+          );
+        } else {
           setState(() {
             _errorMessage = 'Authentication failed. Please try again.';
             _isLoading = false;

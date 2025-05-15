@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:senior_project/pages/login_page.dart';
-import 'package:senior_project/pages/chat_page.dart';
+import 'package:senior_project/pages/chat_page.dart'; // chat_page yerine chat_screen olması gerekiyor
 import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
 
@@ -13,10 +13,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+      initialRoute: '/', // Başlangıç route'u belirtiyoruz
       routes: {
+        '/': (context) => LoginPage(),         // İlk açılan sayfa login
         '/dashboard': (context) => DashboardPage(),
-        '/chat': (context) => ChatScreen(),
+        '/chat': (context) => ChatScreen(),     // ChatScreen yönlendirmesi
         '/profile': (context) => ProfilePage(),
       },
     );
