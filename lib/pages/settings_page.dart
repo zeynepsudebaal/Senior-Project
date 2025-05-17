@@ -51,9 +51,7 @@ class _SettingsPageState extends State<SettingsPage> {
   );
 
   // Phone validation regex
-  static final _phoneRegex = RegExp(
-    r'^\+?[1-9]\d{1,14}$'
-  );
+  static final _phoneRegex = RegExp(r'^\+?[1-9]\d{1,14}$');
 
   @override
   void initState() {
@@ -70,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
       final profileData = await _authService.getUserProfile();
       print('Settings Page - Profile Data: $profileData');
-      
+
       if (!mounted) return;
 
       setState(() {
@@ -93,9 +91,10 @@ class _SettingsPageState extends State<SettingsPage> {
         _surnameController.text = surname;
         _birthDateController.text = birthDate;
         _genderController.text = gender;
-        
-        print('Settings Page - Birth Date controller text: ${_birthDateController.text}');
-        
+
+        print(
+            'Settings Page - Birth Date controller text: ${_birthDateController.text}');
+
         _isLoading = false;
       });
     } catch (e) {
@@ -127,10 +126,11 @@ class _SettingsPageState extends State<SettingsPage> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
-    
+
     if (picked != null) {
       setState(() {
-        final formattedDate = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+        final formattedDate =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
         _birthDateController.text = formattedDate;
         print('New birth date selected: $formattedDate');
       });
@@ -215,7 +215,7 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (!mounted) return;
-      
+
       if (response['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Password changed successfully!')),
@@ -264,8 +264,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _onItemTapped(int index) {
-    if (index == _selectedIndex) return; // Don't navigate if already on this page
-    
+    if (index == _selectedIndex)
+      return; // Don't navigate if already on this page
+
     setState(() {
       _selectedIndex = index;
     });
@@ -298,14 +299,16 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Widget buildEditableField(String label, TextEditingController controller, {
+  Widget buildEditableField(
+    String label,
+    TextEditingController controller, {
     String? Function(String?)? validator,
     bool isPassword = false,
   }) {
     // Automatically detect password fields based on label
-    bool isPasswordField = isPassword || 
-                         label.toLowerCase().contains('password');
-    
+    bool isPasswordField =
+        isPassword || label.toLowerCase().contains('password');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
@@ -346,15 +349,18 @@ class _SettingsPageState extends State<SettingsPage> {
             Container(
               height: 120,
               child: DrawerHeader(
-                decoration: BoxDecoration(color: const Color.fromARGB(255, 99, 129, 203)),
-                child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+                decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 99, 129, 203)),
+                child: Text('Menu',
+                    style: TextStyle(color: Colors.white, fontSize: 24)),
               ),
             ),
             ListTile(
               leading: Icon(Icons.dashboard),
               title: Text('Dashboard'),
               onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardPage()));
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (context) => DashboardPage()));
               },
             ),
             ListTile(
@@ -406,21 +412,26 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    buildEditableField("Name", _nameController, validator: (value) {
+                    buildEditableField("Name", _nameController,
+                        validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Name is required';
                       }
                       return null;
                     }),
-                    buildEditableField("Surname", _surnameController, validator: (value) {
+                    buildEditableField("Surname", _surnameController,
+                        validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Surname is required';
                       }
                       return null;
                     }),
-                    buildEditableField("Email", _emailController, validator: _validateEmail),
-                    buildEditableField("Phone", _phoneController, validator: _validatePhone),
-                    buildEditableField("Address", _addressController, validator: (value) {
+                    buildEditableField("Email", _emailController,
+                        validator: _validateEmail),
+                    buildEditableField("Phone", _phoneController,
+                        validator: _validatePhone),
+                    buildEditableField("Address", _addressController,
+                        validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Address is required';
                       }
@@ -458,7 +469,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: DropdownButton<String>(
                           value: _getFormattedGender(),
                           isExpanded: true,
-                          items: ['Male', 'Female', 'Other'].map((String value) {
+                          items:
+                              ['Male', 'Female', 'Other'].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(value),
@@ -483,9 +495,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    buildEditableField("Current Password", _currentPasswordController, isPassword: true),
-                    buildEditableField("New Password", _newPasswordController, isPassword: true),
-                    buildEditableField("Confirm New Password", _confirmPasswordController, isPassword: true),
+                    buildEditableField(
+                        "Current Password", _currentPasswordController,
+                        isPassword: true),
+                    buildEditableField("New Password", _newPasswordController,
+                        isPassword: true),
+                    buildEditableField(
+                        "Confirm New Password", _confirmPasswordController,
+                        isPassword: true),
                     const SizedBox(height: 24),
                     Row(
                       children: [
@@ -518,7 +535,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 80), // Add padding for bottom navigation
+                    const SizedBox(
+                        height: 80), // Add padding for bottom navigation
                   ],
                 ),
               ),
@@ -560,13 +578,13 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_genderController.text.isEmpty) {
       return 'Male';
     }
-    
+
     // Format the gender value to match dropdown options (capitalize first letter)
     String gender = _genderController.text.toLowerCase();
     if (gender == 'male') return 'Male';
     if (gender == 'female') return 'Female';
     if (gender == 'other') return 'Other';
-    
+
     // Default to Male if no match found
     return 'Male';
   }

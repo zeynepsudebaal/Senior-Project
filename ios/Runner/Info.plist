@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Konumunuzu kullanmamız gerekiyor çünkü harita üzerinde size en yakın yerleri göstermek istiyoruz.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Uygulama arka planda çalışırken de konumunuzu kullanmamız gerekebilir.</string>	
 </dict>
 </plist>

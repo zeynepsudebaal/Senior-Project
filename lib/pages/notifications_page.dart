@@ -1,21 +1,10 @@
+import 'dart:convert';
+import 'dart:html' as html; // dart:html'ü import ettik
+
 import 'package:flutter/material.dart';
 import 'package:senior_project/pages/chat_page.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: NotificationPage(),
-    );
-  }
-}
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -23,24 +12,79 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationPage> {
-  String? userResponse;
-  int _selectedIndex = 2; // Başlangıçta "Notifications" seçili olacak
+  List<String> alertMessages = []; // Gelen tüm alert mesajları burada tutulacak
+  Map<int, String> userResponses =
+      {}; // Her alert için kullanıcının cevabı burada tutulacak
+  int _selectedIndex = 2; // Notifications seçili
+  html.WebSocket? _socket; // dart:html WebSocket
 
-  void handleResponse(String response) {
+  void handleResponseForIndex(String response, int index) {
     setState(() {
-      userResponse = response;
+      userResponses[index] = response;
     });
 
-    print("User Response: $response");
+    print("User Response for alert $index: $response");
+
+    // İstersen bu cevabı backend'e WebSocket ile yollayabilirsin
+    if (_socket != null && _socket!.readyState == html.WebSocket.OPEN) {
+      final responseData = jsonEncode({
+        'type': 'user_response',
+        'response': response,
+        'alert_index': index,
+      });
+      _socket!.sendString(responseData);
+      print("Sent response to server: $responseData");
+    }
   }
 
-  // Sayfalar arasında geçişi yöneten fonksiyon
+  void _connectWebSocket() {
+    try {
+      _socket = html.WebSocket('ws://10.10.219.112:3000');
+
+      _socket!.onOpen.listen((event) {
+        print('WebSocket connected');
+      });
+
+      _socket!.onMessage.listen((event) {
+        print('Received data from WebSocket: ${event.data}');
+        final parsed = jsonDecode(event.data);
+
+        if (parsed['type'] == 'alert') {
+          setState(() {
+            alertMessages.add(parsed['message']);
+          });
+        }
+      });
+
+      _socket!.onClose.listen((event) {
+        print('WebSocket connection closed');
+      });
+
+      _socket!.onError.listen((event) {
+        print('WebSocket error occurred');
+      });
+    } catch (e) {
+      print('WebSocket connection failed: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _connectWebSocket();
+  }
+
+  @override
+  void dispose() {
+    _socket?.close();
+    super.dispose();
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
-    // Burada sayfa geçişlerini yönetebilirsin
     switch (index) {
       case 0:
         Navigator.push(
@@ -55,10 +99,7 @@ class _NotificationScreenState extends State<NotificationPage> {
         );
         break;
       case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => NotificationPage()),
-        );
+        // Zaten Notifications sayfasındayız
         break;
       case 3:
         Navigator.push(
@@ -104,62 +145,80 @@ class _NotificationScreenState extends State<NotificationPage> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "We received an alert from your sensor in your town",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        "Are you safe?",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () => handleResponse("Yes"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 10,
+                  child: alertMessages.isEmpty
+                      ? Text(
+                          "No alerts yet.",
+                          style: TextStyle(fontSize: 16),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: alertMessages.length,
+                          itemBuilder: (context, index) {
+                            final message = alertMessages[index];
+                            return Card(
+                              margin: EdgeInsets.symmetric(vertical: 8),
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message,
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    SizedBox(height: 10),
+                                    Text(
+                                      "Are you safe?",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 10),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              handleResponseForIndex(
+                                                  "Yes", index),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 20, vertical: 8),
+                                          ),
+                                          child: Text("Yes"),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              handleResponseForIndex(
+                                                  "No", index),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 20, vertical: 8),
+                                          ),
+                                          child: Text("No"),
+                                        ),
+                                      ],
+                                    ),
+                                    if (userResponses.containsKey(index))
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 10),
+                                        child: Text(
+                                          "Your response: ${userResponses[index]}",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            child: Text("Yes"),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => handleResponse("No"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 10,
-                              ),
-                            ),
-                            child: Text("No"),
-                          ),
-                        ],
-                      ),
-                      if (userResponse != null) ...[
-                        SizedBox(height: 20),
-                        Text(
-                          "Your response: $userResponse",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                            );
+                          },
                         ),
-                      ],
-                    ],
-                  ),
                 ),
               ),
             ),
@@ -168,9 +227,9 @@ class _NotificationScreenState extends State<NotificationPage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
-        selectedItemColor: Colors.blue, // Seçili öğe rengi
-        unselectedItemColor: Colors.grey, // Seçilmemiş öğe rengi
-        currentIndex: _selectedIndex, // Seçili sekmeyi takip ediyor
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: [
           BottomNavigationBarItem(

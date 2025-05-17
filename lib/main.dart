@@ -61,7 +61,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    return _isLoggedIn ? ProfilePage() : LoginPage();
+    return _isLoggedIn ? DashboardPage() : LoginPage();
   }
 }
 
