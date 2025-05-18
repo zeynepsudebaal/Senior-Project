@@ -105,7 +105,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final lat = _currentPosition!.latitude;
     final lng = _currentPosition!.longitude;
     final url =
-        Uri.parse('http://192.168.1.35:3000/api/map/nearby?lat=$lat&lng=$lng');
+        Uri.parse('http://192.168.1.47:3000/api/map/nearby?lat=$lat&lng=$lng');
 
     try {
       final resp = await http.get(url);

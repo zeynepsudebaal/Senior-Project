@@ -8,8 +8,8 @@ class AuthService {
   // For iOS simulator, use localhost
   // final String baseUrl = 'http://localhost:3000/api';
   // final String authBaseUrl = 'http://localhost:3000/api/auth';
-  final String baseUrl = 'http://192.168.1.35:3000/api';
-  final String authBaseUrl = 'http://192.168.1.35:3000/api/auth';
+  final String baseUrl = 'http:// 192.168.1.47:3000/api';
+  final String authBaseUrl = 'http://192.168.1.47:3000/api/auth';
 
   // Store token in shared preferences
   Future<void> saveToken(String token) async {
