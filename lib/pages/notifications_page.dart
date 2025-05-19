@@ -1,190 +1,203 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:senior_project/pages/chat_page.dart';
-import 'package:senior_project/pages/dashboard_page.dart';
-import 'package:senior_project/pages/profile_page.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
-  runApp(MyApp());
-}
+class NotificationItem {
+  final String id;
+  final String type;
+  final DateTime dateTime;
+  String? userResponse;
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: NotificationPage(),
+  NotificationItem({
+    required this.id,
+    required this.type,
+    required this.dateTime,
+    this.userResponse,
+  });
+
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    return NotificationItem(
+      id: json['id'].toString(),
+      type: json['type'] ?? 'Deprem',
+      dateTime:
+          DateTime.parse(json['dateTime'] ?? DateTime.now().toIso8601String()),
     );
   }
 }
 
 class NotificationPage extends StatefulWidget {
+  final Map<String, dynamic>? notificationData;
+
+  NotificationPage({Key? key, this.notificationData}) : super(key: key);
+
   @override
-  _NotificationScreenState createState() => _NotificationScreenState();
+  _NotificationPageState createState() => _NotificationPageState();
 }
 
-class _NotificationScreenState extends State<NotificationPage> {
-  String? userResponse;
-  int _selectedIndex = 2; // Başlangıçta "Notifications" seçili olacak
+class _NotificationPageState extends State<NotificationPage> {
+  List<NotificationItem> notifications = [];
+  bool isLoading = true;
 
-  void handleResponse(String response) {
-    setState(() {
-      userResponse = response;
-    });
+  @override
+  void initState() {
+    super.initState();
+    fetchNotifications();
 
-    print("User Response: $response");
+    // Bildirimden veri geldiyse listeye ekle
+    if (widget.notificationData != null) {
+      final singleNotif = NotificationItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: widget.notificationData!['type'] ?? 'Deprem',
+        dateTime: DateTime.parse(widget.notificationData!['dateTime'] ??
+            DateTime.now().toIso8601String()),
+      );
+
+      setState(() {
+        notifications.insert(0, singleNotif);
+        isLoading = false;
+      });
+    }
   }
 
-  // Sayfalar arasında geçişi yöneten fonksiyon
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  Future<void> fetchNotifications() async {
+    final url = Uri.parse('http://192.168.1.47:3000/api/web/earthquake');
+    try {
+      final response = await http.get(url);
 
-    // Burada sayfa geçişlerini yönetebilirsin
-    switch (index) {
-      case 0:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => DashboardPage()),
-        );
-        break;
-      case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ChatScreen()),
-        );
-        break;
-      case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => NotificationPage()),
-        );
-        break;
-      case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
-        );
-        break;
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+
+        final now = DateTime.now();
+        final oneDayAgo = now.subtract(Duration(days: 1));
+
+        // 1 gün içindeki bildirimleri filtrele
+        final filteredData = data.where((item) {
+          final dateTimeStr = item['dateTime'] ?? now.toIso8601String();
+          final dateTime = DateTime.tryParse(dateTimeStr) ?? now;
+          return dateTime.isAfter(oneDayAgo);
+        }).toList();
+
+        setState(() {
+          notifications = filteredData
+              .map((item) => NotificationItem.fromJson(item))
+              .toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        print('API error: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      print('Fetch error: $e');
     }
+  }
+
+  final user = FirebaseAuth.instance.currentUser;
+  void _setUserResponse(String id, String response) async {
+    final userId = user?.uid; // TODO: Gerçek kullanıcı ID'sini burada al
+
+    final url = Uri.parse('http://192.168.1.47:3000/api/web/user-response');
+    final body = {
+      'notificationId': id,
+      'userId': userId,
+      'response': response,
+    };
+
+    try {
+      final res = await http.post(url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body));
+
+      if (res.statusCode == 200) {
+        print("Cevap başarıyla gönderildi");
+        setState(() {
+          final notif = notifications.firstWhere((element) => element.id == id);
+          notif.userResponse = response;
+        });
+      } else {
+        print("Sunucu hatası: ${res.statusCode}");
+      }
+    } catch (e) {
+      print("Hata oluştu: $e");
+    }
+  }
+
+  Widget _buildNotificationCard(NotificationItem item) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${item.type} Alert',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Tarih: ${item.dateTime.toLocal().toString().split('.')[0]}',
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Güvende misiniz?',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 10),
+            if (item.userResponse == null) ...[
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _setUserResponse(item.id, 'Evet'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    child: Text('Evet'),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () => _setUserResponse(item.id, 'Hayır'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: Text('Hayır'),
+                  ),
+                ],
+              ),
+            ] else ...[
+              Text(
+                'Cevabınız: ${item.userResponse}',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 99, 129, 203),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            SizedBox(height: 40),
-            Align(
-              alignment: Alignment.topCenter,
-              child: Text(
-                "Notifications",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 5,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "We received an alert from your sensor in your town",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        "Are you safe?",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () => handleResponse("Yes"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 10,
-                              ),
-                            ),
-                            child: Text("Yes"),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => handleResponse("No"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 10,
-                              ),
-                            ),
-                            child: Text("No"),
-                          ),
-                        ],
-                      ),
-                      if (userResponse != null) ...[
-                        SizedBox(height: 20),
-                        Text(
-                          "Your response: $userResponse",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: Text('Bildirimler'),
+        backgroundColor: Color.fromARGB(255, 99, 129, 203),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.blue, // Seçili öğe rengi
-        unselectedItemColor: Colors.grey, // Seçilmemiş öğe rengi
-        currentIndex: _selectedIndex, // Seçili sekmeyi takip ediyor
-        onTap: _onItemTapped,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: "Dashboard",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: "Notifications",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-      ),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : notifications.isEmpty
+              ? Center(child: Text('Henüz bildirim yok'))
+              : ListView.builder(
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
+                    return _buildNotificationCard(notifications[index]);
+                  },
+                ),
     );
   }
 }

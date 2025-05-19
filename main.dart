@@ -4,22 +4,30 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:senior_project/pages/login_page.dart';
 import 'package:senior_project/pages/chat_page.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
+import 'package:senior_project/pages/notifications_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
 import 'package:senior_project/services/auth_service.dart';
+import 'package:senior_project/services/notification_service.dart';
 import 'firebase_options.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
   final AuthService _authService = AuthService();
-
+  final FCMService _fcmService =
+      FCMService(navigatorKey: navigatorKey); // buraya ekle
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey, // BURAYA EKLEDİK
       home: AuthWrapper(authService: _authService),
       routes: {
         '/dashboard': (context) => DashboardPage(),
         '/chat': (context) => ChatScreen(),
         '/profile': (context) => ProfilePage(),
+        '/notifications': (context) =>
+            NotificationPage(), // Bildirim sayfası için rota ekledik
       },
     );
   }

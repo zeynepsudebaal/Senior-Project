@@ -40,6 +40,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Firebase Messaging servisi -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- (FirebaseInstanceIdService artık deprecated, güncel Firebase sürümde kaldırılabilir) -->
+
+        <!-- Bildirim kanalı ID'si (bazı Firebase sürümleri için) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel" />
+
         <!-- Flutter tarafından kullanılan meta-data -->
         <meta-data
             android:name="flutterEmbedding"
