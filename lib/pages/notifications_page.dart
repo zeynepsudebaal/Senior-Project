@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:senior_project/pages/chat_page.dart';
 
 class NotificationItem {
   final String id;
@@ -25,6 +26,26 @@ class NotificationItem {
           DateTime.parse(json['dateTime'] ?? DateTime.now().toIso8601String()),
     );
   }
+  factory NotificationItem.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    // Tarih alanını kontrol et
+    DateTime dateTime;
+    if (data.containsKey('createdAt') && data['createdAt'] != null) {
+      dateTime = (data['createdAt'] as Timestamp).toDate();
+    } else if (data.containsKey('timestamp') && data['timestamp'] != null) {
+      dateTime = (data['timestamp'] as Timestamp).toDate();
+    } else {
+      dateTime = DateTime.now(); // Tarih yoksa şimdiki zamanı koy
+    }
+
+    return NotificationItem(
+      id: doc.id,
+      type: data['type'] ?? 'Deprem',
+      dateTime: dateTime,
+      userResponse: data['userResponse'],
+    );
+  }
 }
 
 class NotificationPage extends StatefulWidget {
@@ -40,12 +61,13 @@ class _NotificationPageState extends State<NotificationPage> {
   List<NotificationItem> notifications = [];
   bool isLoading = true;
 
+  final user = FirebaseAuth.instance.currentUser;
+
   @override
   void initState() {
     super.initState();
     fetchNotifications();
 
-    // Bildirimden veri geldiyse listeye ekle
     if (widget.notificationData != null) {
       final singleNotif = NotificationItem(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -62,48 +84,35 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> fetchNotifications() async {
-    final url = Uri.parse('http://192.168.1.47:3000/api/web/earthquake');
     try {
-      final response = await http.get(url);
+      final snapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .limit(50) // İstersen limiti arttırabilirsin
+          .get();
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+      final notifList = snapshot.docs
+          .map((doc) => NotificationItem.fromFirestore(doc))
+          .toList();
 
-        final now = DateTime.now();
-        final oneDayAgo = now.subtract(Duration(days: 1));
+      // Tarihe göre azalan sıralama (en yeni en üstte)
+      notifList.sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
-        // 1 gün içindeki bildirimleri filtrele
-        final filteredData = data.where((item) {
-          final dateTimeStr = item['dateTime'] ?? now.toIso8601String();
-          final dateTime = DateTime.tryParse(dateTimeStr) ?? now;
-          return dateTime.isAfter(oneDayAgo);
-        }).toList();
-
-        setState(() {
-          notifications = filteredData
-              .map((item) => NotificationItem.fromJson(item))
-              .toList();
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          isLoading = false;
-        });
-        print('API error: ${response.statusCode}');
-      }
+      setState(() {
+        notifications = notifList;
+        isLoading = false;
+      });
     } catch (e) {
+      print("Firestore'dan bildirim çekilirken hata: $e");
       setState(() {
         isLoading = false;
       });
-      print('Fetch error: $e');
     }
   }
 
-  final user = FirebaseAuth.instance.currentUser;
-  void _setUserResponse(String id, String response) async {
-    final userId = user?.uid; // TODO: Gerçek kullanıcı ID'sini burada al
+  Future<void> _setUserResponse(String id, String response) async {
+    final userId = user?.uid;
 
-    final url = Uri.parse('http://192.168.1.47:3000/api/web/user-response');
+    final url = Uri.parse('http://192.168.1.50:3000/api/web/user-response');
     final body = {
       'notificationId': id,
       'userId': userId,
@@ -162,7 +171,32 @@ class _NotificationPageState extends State<NotificationPage> {
                   ),
                   SizedBox(width: 10),
                   ElevatedButton(
-                    onPressed: () => _setUserResponse(item.id, 'Hayır'),
+                    onPressed: () async {
+                      await _setUserResponse(item.id, 'Hayır');
+
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text("SAKİN OLUN"),
+                            content: Text(
+                                "Sakin kalın, Chat sayfasına yönlendiriliyorsunuz"),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (context) => ChatScreen()),
+                                  );
+                                },
+                                child: Text("Tamam"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                     style:
                         ElevatedButton.styleFrom(backgroundColor: Colors.red),
                     child: Text('Hayır'),
