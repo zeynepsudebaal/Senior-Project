@@ -25,12 +25,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Email validation regex
   static final _emailRegex = RegExp(
-    r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+',
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
   );
 
-  // Phone validation regex (allows formats like: +1234567890, 123-456-7890, (123) 456-7890)
+  // Phone validation regex - updated to enforce E.164 format (+CountryCodeDigits)
   static final _phoneRegex = RegExp(
-    r'^\+?[\d\s-()]{10,}$',
+    r'^\+[1-9]\d{1,14}$',
   );
 
     // List of common email domains
@@ -99,9 +99,26 @@ class _RegisterPageState extends State<RegisterPage> {
     if (value == null || value.isEmpty) {
       return 'Phone number is required';
     }
-    if (!_phoneRegex.hasMatch(value)) {
-      return 'Please enter a valid phone number';
+    
+    // Remove any spaces, dashes, parentheses
+    String formattedPhone = value.replaceAll(RegExp(r'[\s\-()]'), '');
+    
+    // Ensure it starts with a plus sign
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+$formattedPhone';
     }
+    
+    if (!_phoneRegex.hasMatch(formattedPhone)) {
+      return 'Please enter a valid phone number in E.164 format (e.g., +1234567890)';
+    }
+    
+    // Store the formatted number back in the controller
+    if (value != formattedPhone) {
+      // We can't modify the controller directly from the validator,
+      // but we can provide guidance for the user
+      return 'Please format as: $formattedPhone';
+    }
+    
     return null;
   }
 
@@ -119,6 +136,44 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  // Address validation regex
+  static final _addressRegex = RegExp(
+    r'^[A-Za-z\s]+,\s*[A-Za-z\s]+,\s*[A-Za-z\s]+,\s*\d+$',
+  );
+
+  String? _validateAddress(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Address is required';
+    }
+
+    // Format the address
+    String formattedAddress = value.trim();
+    
+    // Capitalize first letter of each word
+    formattedAddress = formattedAddress.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+
+    // Ensure proper spacing after commas
+    formattedAddress = formattedAddress.replaceAll(RegExp(r',\s*'), ', ');
+
+    // Validate the format
+    if (!_addressRegex.hasMatch(formattedAddress)) {
+      return 'Please use format: City, District, Street Name, Building Number\nExample: Istanbul, Kadikoy, Ataturk Street, 42';
+    }
+
+    // Update the controller with the formatted value
+    if (value != formattedAddress) {
+      _addressController.value = TextEditingValue(
+        text: formattedAddress,
+        selection: TextSelection.collapsed(offset: formattedAddress.length),
+      );
+    }
+
+    return null;
+  }
+
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -130,6 +185,26 @@ class _RegisterPageState extends State<RegisterPage> {
       });
       return;
     }
+    
+    // Format the phone number to E.164 before submitting
+    String phone = _phoneController.text.trim();
+    // Remove any spaces, dashes, parentheses
+    phone = phone.replaceAll(RegExp(r'[\s\-()]'), '');
+    // Ensure it starts with a plus sign
+    if (!phone.startsWith('+')) {
+      phone = '+$phone';
+    }
+    
+    // Validate phone number again
+    if (!_phoneRegex.hasMatch(phone)) {
+      setState(() {
+        _errorMessage = 'Please enter a valid phone number in E.164 format (e.g., +1234567890)';
+      });
+      return;
+    }
+    
+    // Update the controller with the formatted value
+    _phoneController.text = phone;
 
     setState(() {
       _isLoading = true;
@@ -373,14 +448,31 @@ class _RegisterPageState extends State<RegisterPage> {
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.2),
-                      hintText: "Phone Number (e.g., +1234567890)",
+                      hintText: "Phone Number (E.164 format: +1234567890)",
                       hintStyle: TextStyle(color: Colors.white70),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
                       ),
+                      helperText: 'Must include country code with + prefix',
+                      helperStyle: TextStyle(color: Colors.white70),
                     ),
                     validator: _validatePhone,
+                    onChanged: (value) {
+                      // Auto-format: remove spaces, dashes, parentheses
+                      String formatted = value.replaceAll(RegExp(r'[\s\-()]'), '');
+                      
+                      // Ensure it starts with a plus sign
+                      if (formatted.isNotEmpty && !formatted.startsWith('+')) {
+                        formatted = '+$formatted';
+                        
+                        // Update controller with the formatted value
+                        _phoneController.value = TextEditingValue(
+                          text: formatted,
+                          selection: TextSelection.collapsed(offset: formatted.length),
+                        );
+                      }
+                    },
                   ),
                 ),
                 SizedBox(height: 15),
@@ -394,19 +486,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.2),
-                      hintText: "Address",
+                      hintText: "Address (e.g., Istanbul, Kadikoy, Ataturk Street, 42)",
                       hintStyle: TextStyle(color: Colors.white70),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
                       ),
+                      helperText: 'Format: City, District, Street Name, Building Number',
+                      helperStyle: TextStyle(color: Colors.white70),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Address is required';
-                      }
-                      return null;
-                    },
+                    validator: _validateAddress,
                   ),
                 ),
                 SizedBox(height: 15),
