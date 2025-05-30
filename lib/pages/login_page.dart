@@ -5,6 +5,9 @@ import 'profile_page.dart';
 import '../services/auth_service.dart';
 import '../models/user_data.dart';
 import '../models/user.dart' as my_model;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -45,6 +48,13 @@ class _LoginPageState extends State<LoginPage> {
             password: _passwordController.text.trim(),
           );
           print('Firebase login successful');
+
+          // ✅ FCM Token'ı gönder
+          final userId = fb_auth.FirebaseAuth.instance.currentUser?.uid;
+          if (userId != null) {
+            await sendFcmToken(userId);
+          }
+
         } catch (e) {
           print('Firebase login failed: $e');
         }
@@ -116,6 +126,34 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> sendFcmToken(String userId) async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        print("📦 FCM Token: $fcmToken");
+
+        final response = await http.post(
+          Uri.parse('http://192.168.1.40:3000/api/token'), // IP'ni değiştir
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'userId': userId,
+            'fcmToken': fcmToken,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          print('✅ Token backend\'e gönderildi');
+        } else {
+          print('❌ Backend Hatası: ${response.statusCode} - ${response.body}');
+        }
+      } else {
+        print("⚠️ Token alınamadı");
+      }
+    } catch (e) {
+      print("❌ Token gönderme hatası: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,7 +169,6 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo ve Başlık
             Column(
               children: [
                 Icon(Icons.phone, size: 80, color: Colors.blueAccent),
@@ -149,7 +186,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 40),
 
-            // Error Message
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -161,7 +197,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             SizedBox(height: 10),
 
-            // Email TextField
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: TextField(
@@ -182,7 +217,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 15),
 
-            // Password TextField
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: TextField(
@@ -203,7 +237,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 20),
 
-            // Login Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: ElevatedButton(
@@ -227,7 +260,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 15),
 
-            // Forgot Password Link
             TextButton(
               onPressed: () {
                 print("Forgot Password clicked");
@@ -241,7 +273,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
 
-            // Register Link
             TextButton(
               onPressed: () {
                 Navigator.push(
