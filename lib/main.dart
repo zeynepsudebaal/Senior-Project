@@ -10,7 +10,6 @@ import 'package:senior_project/pages/chat_page.dart';
 import 'package:senior_project/pages/dashboard_page.dart';
 import 'package:senior_project/pages/profile_page.dart';
 import 'package:senior_project/services/auth_service.dart';
-import 'package:senior_project/pages/messaging.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -52,22 +51,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoggedIn = false;
 
   @override
-  @override
   void initState() {
     super.initState();
     _checkLoginStatus();
 
-    // Foreground
     FirebaseMessaging.onMessage.listen((message) {
       _handleNotification(message);
     });
 
-    // App background -> from tray tap
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       _handleNotification(message);
     });
 
-    // App terminated -> cold start
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
         _handleNotification(message);
@@ -76,6 +71,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   void _handleNotification(RemoteMessage message) {
+    if (!mounted) return;
+
     final data = message.data;
     final question = data['question'];
     final notificationId = data['notificationId'];
@@ -91,16 +88,35 @@ class _AuthWrapperState extends State<AuthWrapper> {
           actions: [
             TextButton(
               child: Text(yesLabel),
-              onPressed: () {
-                sendResponse(notificationId, 'yes');
+              onPressed: () async {
                 Navigator.of(context).pop();
+                await Future.delayed(Duration(milliseconds: 300));
+                await sendResponse(
+                    notificationId, 'yes', context); // 
               },
             ),
             TextButton(
               child: Text(noLabel),
-              onPressed: () {
-                sendResponse(notificationId, 'no');
+              onPressed: () async {
                 Navigator.of(context).pop();
+                // Hemen bilgi mesajını göster
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    content: Text("Ekiplerimiz tarafınıza yönlendirildi. İletişimde kalmak için chat sayfasına gidebilirsiniz."),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/chat');
+                        },
+                        child: Text("Chat'e Git"),
+                      ),
+                    ],
+                  ),
+                );
+                await Future.delayed(Duration(milliseconds: 300));
+                await sendResponse(notificationId, 'no', context);
               },
             ),
           ],
@@ -108,6 +124,49 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
   }
+
+  Future<void> sendResponse(String notificationId, String response, BuildContext context) async {
+  final url = Uri.parse('http://192.168.1.40:3000/api/web/earthquake/notification-response');
+
+  try {
+    final result = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'notificationId': notificationId, 'response': response}),
+    );
+
+    debugPrint('🔁 Status code: ${result.statusCode}');
+    debugPrint('🔁 Response body: ${result.body}');
+
+    if (result.statusCode == 200 && response == 'no') {
+      final data = jsonDecode(result.body);
+      final message = data['message'] ??
+          "Ekiplerimiz tarafınıza yönlendirildi. İletişimde kalmak için chat sayfasına gidebilirsiniz.";
+
+      Future.delayed(Duration(milliseconds: 300), () {
+        if (!context.mounted) return;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushNamed('/chat');
+                },
+                child: Text("Chat'e Git"),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+  } catch (e) {
+    debugPrint("❌ Exception: $e");
+  }
+}
+
 
   Future<void> _checkLoginStatus() async {
     final isLoggedIn = await widget.authService.isLoggedIn();
@@ -120,14 +179,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (isLoggedIn) {
-      // 🔐 Firebase Auth'tan kullanıcı UID'sini al
       final userId = FirebaseAuth.instance.currentUser?.uid;
-
       if (userId != null) {
-        // 🔔 Android 13 için bildirim izni al
         await FirebaseMessaging.instance.requestPermission();
-
-        // 🚀 Token'ı backend'e gönder
         await sendFcmToken(userId);
       }
     }
@@ -138,23 +192,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         final response = await http.post(
-          Uri.parse(
-              'http://192.168.1.40:3000/api/token'), // IP'ni kendine göre değiştir
+          Uri.parse('http://192.168.1.40:3000/api/token'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'userId': userId,
-            'fcmToken': fcmToken,
-          }),
+          body: jsonEncode({'userId': userId, 'fcmToken': fcmToken}),
         );
-
         if (response.statusCode == 200) {
-          print('✅ FCM token başarıyla backend\'e gönderildi');
+          print('✅ Token gönderildi');
         } else {
           print('❌ Backend hata: ${response.statusCode} - ${response.body}');
         }
       }
     } catch (e) {
-      print('❌ Token gönderilirken hata oluştu: $e');
+      print('❌ Token gönderim hatası: $e');
     }
   }
 
