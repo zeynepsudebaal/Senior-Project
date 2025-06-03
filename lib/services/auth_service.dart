@@ -361,7 +361,6 @@ class AuthService {
   Future<Map<String, dynamic>> addRelative(
     String name,
     String surname,
-    String email,
     String phone,
   ) async {
     try {
@@ -370,7 +369,7 @@ class AuthService {
         throw Exception('No token found');
       }
 
-      print('AuthService: Adding relative with data: name=$name, surname=$surname, email=$email, phone=$phone');
+      print('AuthService: Adding relative with data: name=$name, surname=$surname, phone=$phone');
       print('AuthService: Using token: $token');
 
       final response = await http.post(
@@ -383,7 +382,6 @@ class AuthService {
         body: jsonEncode({
           'name': name,
           'surname': surname,
-          'email': email,
           'phone': phone,
         }),
       );
@@ -412,7 +410,6 @@ class AuthService {
     String relativeId,
     String name,
     String surname,
-    String email,
     String phone,
   ) async {
     try {
@@ -431,7 +428,6 @@ class AuthService {
         body: jsonEncode({
           'name': name,
           'surname': surname,
-          'email': email,
           'phone': phone,
         }),
       );

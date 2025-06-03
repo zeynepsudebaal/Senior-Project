@@ -50,9 +50,9 @@ class _SettingsPageState extends State<SettingsPage> {
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
   );
 
-  // Phone validation regex
+  // Phone validation regex - updated to enforce E.164 format (+CountryCodeDigits)
   static final _phoneRegex = RegExp(
-    r'^\+?[1-9]\d{1,14}$'
+    r'^\+[1-9]\d{1,14}$'
   );
 
   @override
@@ -137,6 +137,115 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Email is required';
+    }
+    if (!_emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Phone number is required';
+    }
+    
+    // Remove any spaces, dashes, parentheses
+    String formattedPhone = value.replaceAll(RegExp(r'[\s\-()]'), '');
+    
+    // Ensure it starts with a plus sign
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+$formattedPhone';
+    }
+    
+    if (!_phoneRegex.hasMatch(formattedPhone)) {
+      return 'Please enter a valid phone number in E.164 format (e.g., +1234567890)';
+    }
+    
+    return null;
+  }
+
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return; // Don't navigate if already on this page
+    
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => DashboardPage()),
+        );
+        break;
+      case 1:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+        break;
+      case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => NotificationPage()),
+        );
+        break;
+      case 3:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ProfilePage()),
+        );
+        break;
+    }
+  }
+
+  Widget buildEditableField(String label, TextEditingController controller, {
+    String? Function(String?)? validator,
+    bool isPassword = false,
+    Function(String)? onChanged,
+  }) {
+    bool isPasswordField = isPassword || 
+                         label.toLowerCase().contains('password');
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          SizedBox(height: 4),
+          TextFormField(
+            controller: controller,
+            obscureText: isPasswordField,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.2),
+              contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
+              hintText: label == "Phone" ? "E.164 format: +1234567890" : null,
+              helperText: label == "Phone" ? "Must include country code with + prefix" : null,
+            ),
+            validator: validator,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> saveUserData() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -148,13 +257,23 @@ class _SettingsPageState extends State<SettingsPage> {
         _errorMessage = null;
       });
 
+      // Format phone number before saving
+      String phone = _phoneController.text.trim();
+      // Remove any spaces, dashes, parentheses
+      phone = phone.replaceAll(RegExp(r'[\s\-()]'), '');
+      // Ensure it starts with a plus sign
+      if (!phone.startsWith('+')) {
+        phone = '+$phone';
+      }
+      _phoneController.text = phone;
+
       // Ensure gender is lowercase for the backend
       String genderValue = _genderController.text.toLowerCase();
 
       final response = await _authService.updateProfile(
         _nameController.text,
         _surnameController.text,
-        _phoneController.text,
+        phone,
         _addressController.text,
         email: _emailController.text,
         birthDate: _birthDateController.text,
@@ -243,97 +362,17 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Email is required';
-    }
-    if (!_emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email address';
-    }
-    return null;
-  }
-
-  String? _validatePhone(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Phone number is required';
-    }
-    if (!_phoneRegex.hasMatch(value)) {
-      return 'Please enter a valid phone number';
-    }
-    return null;
-  }
-
-  void _onItemTapped(int index) {
-    if (index == _selectedIndex) return; // Don't navigate if already on this page
-    
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => DashboardPage()),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ChatScreen()),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => NotificationPage()),
-        );
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
-        );
-        break;
-    }
-  }
-
-  Widget buildEditableField(String label, TextEditingController controller, {
-    String? Function(String?)? validator,
-    bool isPassword = false,
-  }) {
-    // Automatically detect password fields based on label
-    bool isPasswordField = isPassword || 
-                         label.toLowerCase().contains('password');
-    
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPasswordField,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          filled: true,
-          fillColor: Colors.grey[100],
-        ),
-        validator: validator,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.indigo.shade900,
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Text("Settings"),
-        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        title: Text("Settings", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.indigo.shade900,
         automaticallyImplyLeading: false,
         leading: IconButton(
-          icon: Icon(Icons.menu),
+          icon: Icon(Icons.menu, color: Colors.white),
           onPressed: () {
             _scaffoldKey.currentState?.openDrawer();
           },
@@ -346,16 +385,9 @@ class _SettingsPageState extends State<SettingsPage> {
             Container(
               height: 120,
               child: DrawerHeader(
-                decoration: BoxDecoration(color: const Color.fromARGB(255, 99, 129, 203)),
-                child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+                decoration: BoxDecoration(color: Colors.indigo.shade900),
+                child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
               ),
-            ),
-            ListTile(
-              leading: Icon(Icons.dashboard),
-              title: Text('Dashboard'),
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardPage()));
-              },
             ),
             ListTile(
               leading: Icon(Icons.settings),
@@ -382,7 +414,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Colors.white))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
@@ -403,6 +435,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -419,7 +452,24 @@ class _SettingsPageState extends State<SettingsPage> {
                       return null;
                     }),
                     buildEditableField("Email", _emailController, validator: _validateEmail),
-                    buildEditableField("Phone", _phoneController, validator: _validatePhone),
+                    buildEditableField("Phone", _phoneController, 
+                      validator: _validatePhone,
+                      onChanged: (value) {
+                        // Auto-format: remove spaces, dashes, parentheses
+                        String formatted = value.replaceAll(RegExp(r'[\s\-()]'), '');
+                        
+                        // Ensure it starts with a plus sign
+                        if (formatted.isNotEmpty && !formatted.startsWith('+')) {
+                          formatted = '+$formatted';
+                          
+                          // Update controller with the formatted value
+                          _phoneController.value = TextEditingValue(
+                            text: formatted,
+                            selection: TextSelection.collapsed(offset: formatted.length),
+                          );
+                        }
+                      },
+                    ),
                     buildEditableField("Address", _addressController, validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Address is required';
@@ -427,18 +477,28 @@ class _SettingsPageState extends State<SettingsPage> {
                       return null;
                     }),
                     const SizedBox(height: 16),
+                    Text(
+                      "Birth Date",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 4),
                     TextFormField(
                       controller: _birthDateController,
                       readOnly: true,
                       onTap: () => _selectDate(context),
+                      style: TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: "Birth Date",
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[100],
-                        suffixIcon: Icon(Icons.calendar_today),
+                        fillColor: Colors.white.withOpacity(0.2),
+                        contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
+                        suffixIcon: Icon(Icons.calendar_today, color: Colors.indigo.shade900),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -451,6 +511,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -458,10 +519,14 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: DropdownButton<String>(
                           value: _getFormattedGender(),
                           isExpanded: true,
+                          dropdownColor: Colors.white.withOpacity(0.2),
                           items: ['Male', 'Female', 'Other'].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
-                              child: Text(value),
+                              child: Text(
+                                value,
+                                style: TextStyle(color: Colors.white),
+                              ),
                             );
                           }).toList(),
                           onChanged: (String? newValue) {
@@ -480,6 +545,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -493,11 +559,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           child: ElevatedButton(
                             onPressed: saveUserData,
                             style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.blue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                              backgroundColor: Colors.blueAccent,
+                              foregroundColor: Colors.white,
+                              shape: StadiumBorder(),
+                              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                             ),
                             child: Text("Save Profile"),
                           ),
@@ -507,11 +572,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           child: ElevatedButton(
                             onPressed: changePassword,
                             style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.red,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                              backgroundColor: Colors.blueAccent,
+                              foregroundColor: Colors.white,
+                              shape: StadiumBorder(),
+                              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                             ),
                             child: Text("Change Password"),
                           ),

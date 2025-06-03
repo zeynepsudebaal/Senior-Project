@@ -19,12 +19,12 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
 
   // Email validation regex
   static final _emailRegex = RegExp(
-    r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+',
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
   );
 
-  // Phone validation regex (allows formats like: +1234567890, 123-456-7890, (123) 456-7890)
+  // Phone validation regex - updated to enforce E.164 format (+CountryCodeDigits)
   static final _phoneRegex = RegExp(
-    r'^\+?[\d\s-()]{10,}$',
+    r'^\+[1-9]\d{1,14}$',
   );
 
   // List of common email domains
@@ -79,12 +79,14 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
     if (value == null || value.isEmpty) {
       return 'Email is required';
     }
+
     if (!_emailRegex.hasMatch(value)) {
       return 'Please enter a valid email address';
     }
-    final suggestion = _suggestDomain(value);
+
+        final suggestion = _suggestDomain(value);
     if (suggestion != null) {
-      return 'Did you mean ${value.split('@')[0]}@$suggestion?';
+      return 'Possible typo: Did you mean ${value.split('@')[0]}@$suggestion?';
     }
     return null;
   }
@@ -93,9 +95,26 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
     if (value == null || value.isEmpty) {
       return 'Phone number is required';
     }
-    if (!_phoneRegex.hasMatch(value)) {
-      return 'Please enter a valid phone number';
+    
+    // Remove any spaces, dashes, parentheses
+    String formattedPhone = value.replaceAll(RegExp(r'[\s\-()]'), '');
+    
+    // Ensure it starts with a plus sign
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+$formattedPhone';
     }
+    
+    if (!_phoneRegex.hasMatch(formattedPhone)) {
+      return 'Please enter a valid phone number in E.164 format (e.g., +1234567890)';
+    }
+    
+    // Store the formatted number back in the controller
+    if (value != formattedPhone) {
+      // We can't modify the controller directly from the validator,
+      // but we can provide guidance for the user
+      return 'Please format as: $formattedPhone';
+    }
+    
     return null;
   }
 
@@ -112,7 +131,6 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
       _relatives.add({
         'name': TextEditingController(),
         'surname': TextEditingController(),
-        'email': TextEditingController(),
         'phone': TextEditingController(),
       });
     });
@@ -137,14 +155,31 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
     // Validate all relative forms
     for (var relative in _relatives) {
       if (relative['name']!.text.isEmpty ||
-          relative['surname']!.text.isEmpty ||
-          !_emailRegex.hasMatch(relative['email']!.text) ||
-          !_phoneRegex.hasMatch(relative['phone']!.text)) {
+          relative['surname']!.text.isEmpty) {
         setState(() {
           _errorMessage = 'Please fill in all fields with valid data for all relatives';
         });
         return;
       }
+      
+      // Specifically validate and format phone numbers
+      String phone = relative['phone']!.text.trim();
+      // Remove any spaces, dashes, parentheses
+      phone = phone.replaceAll(RegExp(r'[\s\-()]'), '');
+      // Ensure it starts with a plus sign
+      if (!phone.startsWith('+')) {
+        phone = '+$phone';
+      }
+      
+      if (!_phoneRegex.hasMatch(phone)) {
+        setState(() {
+          _errorMessage = 'Please enter valid phone numbers in E.164 format (e.g., +1234567890)';
+        });
+        return;
+      }
+      
+      // Update the controller with the formatted value
+      relative['phone']!.text = phone;
     }
 
     setState(() {
@@ -157,7 +192,6 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
       final relativesData = _relatives.map((relative) => {
         'name': relative['name']!.text,
         'surname': relative['surname']!.text,
-        'email': relative['email']!.text,
         'phone': relative['phone']!.text,
       }).toList();
 
@@ -216,7 +250,8 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Relatives'),
+        title: Text('Add Relatives', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.indigo.shade900,
         automaticallyImplyLeading: false,
       ),
       body: Container(
@@ -256,6 +291,7 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
                   itemBuilder: (context, index) {
                     return Card(
                       margin: EdgeInsets.symmetric(vertical: 8),
+                      color: Colors.indigo.shade600,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -267,6 +303,7 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
                                 Text(
                                   'Relative ${index + 1}',
                                   style: TextStyle(
+                                    color : Colors.white,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -282,8 +319,9 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
                               controller: _relatives[index]['name'],
                               decoration: InputDecoration(
                                 labelText: 'Name',
+                                labelStyle: TextStyle(color: Colors.white), // Label text color
                                 filled: true,
-                                fillColor: Colors.white,
+                                fillColor: Colors.white.withOpacity(0.2),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
@@ -296,8 +334,9 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
                               controller: _relatives[index]['surname'],
                               decoration: InputDecoration(
                                 labelText: 'Surname',
+                                labelStyle: TextStyle(color: Colors.white), // Label text color
                                 filled: true,
-                                fillColor: Colors.white,
+                                fillColor: Colors.white.withOpacity(0.2),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
@@ -307,26 +346,34 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
                               },
                             ),
                             TextFormField(
-                              controller: _relatives[index]['email'],
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                                filled: true,
-                                fillColor: Colors.white,
-                                hintText: 'example@email.com',
-                              ),
-                              keyboardType: TextInputType.emailAddress,
-                              validator: _validateEmail,
-                            ),
-                            TextFormField(
                               controller: _relatives[index]['phone'],
                               decoration: InputDecoration(
                                 labelText: 'Phone',
+                                labelStyle: TextStyle(color: Colors.white), // Label text color
                                 filled: true,
-                                fillColor: Colors.white,
-                                hintText: '+1234567890 or (123) 456-7890',
+                                fillColor: Colors.white.withOpacity(0.2),
+                                hintText: 'E.164 format: +1234567890',
+                                hintStyle: TextStyle(color: Colors.white), // Hint text color
+                                helperText: 'Must include country code with + prefix',
+                                helperStyle: TextStyle(color: Colors.white), // Helper text color
                               ),
                               keyboardType: TextInputType.phone,
                               validator: _validatePhone,
+                              onChanged: (value) {
+                                // Auto-format: remove spaces, dashes, parentheses
+                                String formatted = value.replaceAll(RegExp(r'[\s\-()]'), '');
+                                
+                                // Ensure it starts with a plus sign
+                                if (formatted.isNotEmpty && !formatted.startsWith('+')) {
+                                  formatted = '+$formatted';
+                                  
+                                  // Update controller with the formatted value
+                                  _relatives[index]['phone']!.value = TextEditingValue(
+                                    text: formatted,
+                                    selection: TextSelection.collapsed(offset: formatted.length),
+                                  );
+                                }
+                              },
                             ),
                           ],
                         ),
@@ -340,20 +387,21 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
                 children: [
                   ElevatedButton.icon(
                     onPressed: _addRelativeForm,
-                    icon: Icon(Icons.add),
-                    label: Text('Add Another Relative'),
+                    icon: Icon(Icons.add, color: Colors.white, size: 14),
+                    label: Text('Add Another Relative', style: TextStyle(fontSize: 14, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: Colors.blueAccent,
+                      padding: EdgeInsets.symmetric(horizontal: 25, vertical: 16),
                     ),
                   ),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _finishRegistration,
                     child: _isLoading
                         ? CircularProgressIndicator(color: Colors.white)
-                        : Text('Finish Registration'),
+                        : Text('Finish Registration', style: TextStyle(fontSize: 14, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      backgroundColor: Colors.blueAccent,
+                      padding: EdgeInsets.symmetric(horizontal: 25, vertical: 16),
                     ),
                   ),
                 ],
@@ -371,7 +419,6 @@ class _AddRelativesPopupState extends State<AddRelativesPopup> {
     for (var relative in _relatives) {
       relative['name']!.dispose();
       relative['surname']!.dispose();
-      relative['email']!.dispose();
       relative['phone']!.dispose();
     }
     super.dispose();

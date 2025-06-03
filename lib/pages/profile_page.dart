@@ -34,12 +34,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Email validation regex
   static final _emailRegex = RegExp(
-    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+    r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+',
   );
 
-  // Corrected phone validation regex
+  // Phone validation regex - updated to enforce E.164 format (+CountryCodeDigits)
   static final _phoneRegex = RegExp(
-    r'^\+?[1-9]\d{1,14}$'
+    r'^\+[1-9]\d{1,14}$',
   );
 
   // Suggest a domain if a common typo is detected
@@ -99,9 +99,26 @@ class _ProfilePageState extends State<ProfilePage> {
     if (value == null || value.isEmpty) {
       return 'Phone number is required';
     }
-    if (!_phoneRegex.hasMatch(value)) {
-      return 'Please enter a valid phone number';
+    
+    // Remove any spaces, dashes, parentheses
+    String formattedPhone = value.replaceAll(RegExp(r'[\s\-()]'), '');
+    
+    // Ensure it starts with a plus sign
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+$formattedPhone';
     }
+    
+    if (!_phoneRegex.hasMatch(formattedPhone)) {
+      return 'Please enter a valid phone number in E.164 format (e.g., +1234567890)';
+    }
+    
+    // Store the formatted number back in the controller
+    if (value != formattedPhone) {
+      // We can't modify the controller directly from the validator,
+      // but we can provide guidance for the user
+      return 'Please format as: $formattedPhone';
+    }
+    
     return null;
   }
 
@@ -190,7 +207,6 @@ class _ProfilePageState extends State<ProfilePage> {
               'id': relative['id']?.toString() ?? '',
               'name': relative['name']?.toString() ?? '',
               'surname': relative['surname']?.toString() ?? '',
-              'email': relative['email']?.toString() ?? '',
               'phone': relative['phone']?.toString() ?? '',
             };
           }).toList();
@@ -249,7 +265,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showAddRelativeDialog() async {
     final nameController = TextEditingController();
     final surnameController = TextEditingController();
-    final emailController = TextEditingController();
     final phoneController = TextEditingController();
 
     final _formKey = GlobalKey<FormState>();
@@ -285,16 +300,29 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                 ),
                 TextFormField(
-                  controller: emailController,
-                  decoration: InputDecoration(labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
-                ),
-                TextFormField(
                   controller: phoneController,
-                  decoration: InputDecoration(labelText: 'Phone'),
+                  decoration: InputDecoration(
+                    labelText: 'Phone',
+                    hintText: 'E.164 format: +1234567890',
+                    helperText: 'Must include country code with + prefix',
+                  ),
                   keyboardType: TextInputType.phone,
                   validator: _validatePhone,
+                  onChanged: (value) {
+                    // Auto-format: remove spaces, dashes, parentheses
+                    String formatted = value.replaceAll(RegExp(r'[\s\-()]'), '');
+                    
+                    // Ensure it starts with a plus sign
+                    if (formatted.isNotEmpty && !formatted.startsWith('+')) {
+                      formatted = '+$formatted';
+                      
+                      // Update controller with the formatted value
+                      phoneController.value = TextEditingValue(
+                        text: formatted,
+                        selection: TextSelection.collapsed(offset: formatted.length),
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -319,7 +347,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 final response = await _authService.addRelative(
                   nameController.text,
                   surnameController.text,
-                  emailController.text,
                   phoneController.text,
                 );
 
@@ -378,7 +405,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showEditRelativeDialog(Map<String, String> relative) async {
     final nameController = TextEditingController(text: relative['name']);
     final surnameController = TextEditingController(text: relative['surname']);
-    final emailController = TextEditingController(text: relative['email']);
     final phoneController = TextEditingController(text: relative['phone']);
 
     final _formKey = GlobalKey<FormState>();
@@ -414,16 +440,29 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                 ),
                 TextFormField(
-                  controller: emailController,
-                  decoration: InputDecoration(labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
-                ),
-                TextFormField(
                   controller: phoneController,
-                  decoration: InputDecoration(labelText: 'Phone'),
+                  decoration: InputDecoration(
+                    labelText: 'Phone',
+                    hintText: 'E.164 format: +1234567890',
+                    helperText: 'Must include country code with + prefix',
+                  ),
                   keyboardType: TextInputType.phone,
                   validator: _validatePhone,
+                  onChanged: (value) {
+                    // Auto-format: remove spaces, dashes, parentheses
+                    String formatted = value.replaceAll(RegExp(r'[\s\-()]'), '');
+                    
+                    // Ensure it starts with a plus sign
+                    if (formatted.isNotEmpty && !formatted.startsWith('+')) {
+                      formatted = '+$formatted';
+                      
+                      // Update controller with the formatted value
+                      phoneController.value = TextEditingValue(
+                        text: formatted,
+                        selection: TextSelection.collapsed(offset: formatted.length),
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -445,7 +484,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   relative['id']!,
                   nameController.text,
                   surnameController.text,
-                  emailController.text,
                   phoneController.text,
                 );
 
@@ -501,7 +539,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        backgroundColor: Colors.indigo.shade900,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -520,7 +558,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (_errorMessage != null) {
       return Scaffold(
-        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        backgroundColor: Colors.indigo.shade900,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -542,14 +580,14 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+      backgroundColor: Colors.indigo.shade900,
       appBar: AppBar(
         title: Text(
           "Profile",
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         iconTheme: IconThemeData(color: Colors.white),
-        backgroundColor: const Color.fromARGB(255, 99, 129, 203),
+        backgroundColor: Colors.indigo.shade900,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -569,16 +607,9 @@ class _ProfilePageState extends State<ProfilePage> {
             Container(
               height: 120,
               child: DrawerHeader(
-                decoration: BoxDecoration(color: const Color.fromARGB(255, 99, 129, 203)),
+                decoration: BoxDecoration(color: Colors.indigo.shade900),
                 child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
               ),
-            ),
-            ListTile(
-              leading: Icon(Icons.dashboard),
-              title: Text('Dashboard'),
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardPage()));
-              },
             ),
             ListTile(
               leading: Icon(Icons.settings),
@@ -600,33 +631,12 @@ class _ProfilePageState extends State<ProfilePage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              GestureDetector(
-                onTap: () {
-                  // TODO: Implement profile picture update
-                },
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundImage: user.imagePath.startsWith('http')
-                      ? NetworkImage(user.imagePath)
-                      : AssetImage(user.imagePath) as ImageProvider,
-                ),
-              ),
               const SizedBox(height: 10),
-              buildEditableField("Name", user.name, (newValue) {
-                setState(() => user.name = newValue);
-              }),
-              buildEditableField("Surname", user.surname, (newValue) {
-                setState(() => user.surname = newValue);
-              }),
-              buildEditableField("Email", user.email, (newValue) {
-                setState(() => user.email = newValue);
-              }),
-              buildEditableField("Phone", user.phone, (newValue) {
-                setState(() => user.phone = newValue);
-              }),
-              buildEditableField("Address", user.address, (newValue) {
-                setState(() => user.address = newValue);
-              }),
+              buildEditableField("Name", user.name),
+              buildEditableField("Surname", user.surname),
+              buildEditableField("Email", user.email),
+              buildEditableField("Phone", user.phone),
+              buildEditableField("Address", user.address),
               const SizedBox(height: 20),
               buildRelativesSection(),
               const SizedBox(height: 20),
@@ -678,12 +688,22 @@ class _ProfilePageState extends State<ProfilePage> {
                     }
                   }
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  shape: StadiumBorder(),
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
                   showSafetyNotification(context);
                 },
-                child: Text("Check Safety", style: TextStyle(color: Color.fromARGB(255, 99, 129, 203))),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text("Check Safety", style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -705,7 +725,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget buildEditableField(String label, String value, Function(String) onChanged) {
+  Widget buildEditableField(String label, String value, [Function(String)? onChanged]) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -715,13 +735,13 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         TextFormField(
           initialValue: value,
-          onChanged: onChanged,
+          readOnly: true,
           style: TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(color: Colors.white70),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.1),
+            fillColor: Colors.white.withOpacity(0.2),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white)),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white70)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white)),
@@ -741,17 +761,18 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Text(
               "Relatives",
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.bold),
             ),
             ElevatedButton(
               onPressed: _showAddRelativeDialog,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               child: Text(
                 "Add Relative",
-                style: TextStyle(color: Color.fromARGB(255, 99, 129, 203)),
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ],
@@ -808,11 +829,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                       SizedBox(height: 8),
-                      Text(
-                        "Email: ${relative['email']}",
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      SizedBox(height: 4),
                       Text(
                         "Phone: ${relative['phone']}",
                         style: TextStyle(color: Colors.white70),
