@@ -8,8 +8,8 @@ class AuthService {
   // For iOS simulator, use localhost
   // final String baseUrl = 'http://localhost:3000/api';
   // final String authBaseUrl = 'http://localhost:3000/api/auth';
-  final String baseUrl = 'http://192.168.1.40:3000/api';
-  final String authBaseUrl = 'http://192.168.1.40:3000/api/auth';
+  final String baseUrl = 'http://172.20.10.2:3000/api';
+  final String authBaseUrl = 'http://172.20.10.2:3000/api/auth';
 
   // Store token in shared preferences
   Future<void> saveToken(String token) async {
@@ -33,7 +33,8 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-      print('Retrieved token from SharedPreferences: ${token != null ? 'exists' : 'null'}');
+      print(
+          'Retrieved token from SharedPreferences: ${token != null ? 'exists' : 'null'}');
       return token;
     } catch (e) {
       print('Error getting token: $e');
@@ -51,7 +52,7 @@ class AuthService {
     try {
       print('Attempting to login at URL: $authBaseUrl/login');
       print('Login request data: email=$email, password=****');
-      
+
       final response = await http.post(
         Uri.parse('$authBaseUrl/login'),
         headers: {
@@ -73,11 +74,11 @@ class AuthService {
         if (responseData['token'] != null) {
           print('Received token: ${responseData['token'].substring(0, 10)}...');
           await saveToken(responseData['token']);
-          
+
           // Verify token was saved
           final savedToken = await getToken();
           print('Saved token: ${savedToken?.substring(0, 10)}...');
-          
+
           if (savedToken == null) {
             throw Exception('Failed to save token');
           }
@@ -101,7 +102,7 @@ class AuthService {
       }
     } catch (e) {
       print('Login error: $e');
-      if (e.toString().contains('Invalid password') || 
+      if (e.toString().contains('Invalid password') ||
           e.toString().contains('Invalid email or password')) {
         throw Exception('Invalid email or password');
       }
@@ -148,11 +149,11 @@ class AuthService {
         final responseData = jsonDecode(response.body);
         if (responseData['token'] != null) {
           await saveToken(responseData['token']);
-          
+
           // Verify token was saved
           final savedToken = await getToken();
           print('Saved token: ${savedToken?.substring(0, 10)}...');
-          
+
           if (savedToken == null) {
             throw Exception('Failed to save token');
           }
@@ -166,7 +167,8 @@ class AuthService {
           throw Exception('No token received from server');
         }
       } else {
-        throw Exception('Registration failed with status code: ${response.statusCode}\nResponse: ${response.body}');
+        throw Exception(
+            'Registration failed with status code: ${response.statusCode}\nResponse: ${response.body}');
       }
     } catch (e) {
       print('Registration error: $e');
@@ -178,7 +180,7 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     final token = await getToken();
     print('Checking if logged in. Token exists: ${token != null}');
-    
+
     if (token == null) {
       print('No token found in SharedPreferences');
       return false;
@@ -204,7 +206,7 @@ class AuthService {
 
       print('Getting user profile with token: ${token}');
       print('Token length: ${token.length}');
-      
+
       final response = await http.get(
         Uri.parse('$authBaseUrl/profile'),
         headers: {
@@ -218,18 +220,19 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        
+
         // Log the exact user data structure
         print('User data from server: ${responseData['user']}');
-        
+
         // Extract birthDate specifically and with fallback
-        final String birthDate = responseData['user']['birthDate'] ?? 
-                                responseData['user']['birth_date'] ?? 
-                                responseData['user']['dateOfBirth'] ?? 
-                                responseData['user']['date_of_birth'] ?? "";
-        
+        final String birthDate = responseData['user']['birthDate'] ??
+            responseData['user']['birth_date'] ??
+            responseData['user']['dateOfBirth'] ??
+            responseData['user']['date_of_birth'] ??
+            "";
+
         print('Birth date extracted: $birthDate');
-        
+
         return {
           'success': true,
           'user': {
@@ -259,12 +262,8 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> updateProfile(
-    String name,
-    String surname,
-    String phone,
-    String address,
-    {String? email, String? birthDate, String? gender}
-  ) async {
+      String name, String surname, String phone, String address,
+      {String? email, String? birthDate, String? gender}) async {
     try {
       final token = await getToken();
       if (token == null) {
@@ -314,7 +313,8 @@ class AuthService {
       } else {
         try {
           final responseData = jsonDecode(response.body);
-          throw Exception(responseData['message'] ?? 'Failed to update profile');
+          throw Exception(
+              responseData['message'] ?? 'Failed to update profile');
         } catch (e) {
           throw Exception('Failed to update profile: ${response.statusCode}');
         }
@@ -369,7 +369,8 @@ class AuthService {
         throw Exception('No token found');
       }
 
-      print('AuthService: Adding relative with data: name=$name, surname=$surname, phone=$phone');
+      print(
+          'AuthService: Adding relative with data: name=$name, surname=$surname, phone=$phone');
       print('AuthService: Using token: $token');
 
       final response = await http.post(
@@ -386,7 +387,8 @@ class AuthService {
         }),
       );
 
-      print('AuthService: Add relative response status: ${response.statusCode}');
+      print(
+          'AuthService: Add relative response status: ${response.statusCode}');
       print('AuthService: Add relative response body: ${response.body}');
 
       if (response.statusCode == 201) {
@@ -397,8 +399,10 @@ class AuthService {
         print('AuthService: Unauthorized - Token may be invalid');
         throw Exception('Unauthorized - Please login again');
       } else {
-        print('AuthService: Failed to add relative: ${response.statusCode}\nResponse: ${response.body}');
-        throw Exception('Failed to add relative: ${response.statusCode}\nResponse: ${response.body}');
+        print(
+            'AuthService: Failed to add relative: ${response.statusCode}\nResponse: ${response.body}');
+        throw Exception(
+            'Failed to add relative: ${response.statusCode}\nResponse: ${response.body}');
       }
     } catch (e) {
       print('AuthService: Error adding relative: $e');
@@ -512,7 +516,8 @@ class AuthService {
         };
       } else {
         // For any other status code, allow registration to proceed
-        print('Unexpected status code ${response.statusCode} when checking email');
+        print(
+            'Unexpected status code ${response.statusCode} when checking email');
         return {
           'exists': false,
         };
@@ -548,7 +553,8 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
+  Future<Map<String, dynamic>> changePassword(
+      String currentPassword, String newPassword) async {
     try {
       final token = await getToken();
       if (token == null) {
@@ -595,4 +601,4 @@ class AuthService {
       };
     }
   }
-} 
+}

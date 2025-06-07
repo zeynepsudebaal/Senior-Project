@@ -54,7 +54,6 @@ class _LoginPageState extends State<LoginPage> {
           if (userId != null) {
             await sendFcmToken(userId);
           }
-
         } catch (e) {
           print('Firebase login failed: $e');
         }
@@ -86,8 +85,10 @@ class _LoginPageState extends State<LoginPage> {
         if (profileResponse['success'] == true) {
           try {
             final relativesResponse = await _authService.getRelatives();
-            if (relativesResponse['success'] == true && relativesResponse['relatives'] != null) {
-              UserData.myUser.relatives = (relativesResponse['relatives'] as List).map((relative) {
+            if (relativesResponse['success'] == true &&
+                relativesResponse['relatives'] != null) {
+              UserData.myUser.relatives =
+                  (relativesResponse['relatives'] as List).map((relative) {
                 return {
                   'id': relative['id']?.toString() ?? '',
                   'name': relative['name']?.toString() ?? '',
@@ -133,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
         print("📦 FCM Token: $fcmToken");
 
         final response = await http.post(
-          Uri.parse('http://192.168.1.40:3000/api/token'), // IP'ni değiştir
+          Uri.parse('http://172.20.10.2:3000/api/token'), // IP'ni değiştir
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'userId': userId,
@@ -185,7 +186,6 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
             SizedBox(height: 40),
-
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -196,7 +196,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             SizedBox(height: 10),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: TextField(
@@ -216,7 +215,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             SizedBox(height: 15),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: TextField(
@@ -236,7 +234,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: ElevatedButton(
@@ -259,7 +256,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             SizedBox(height: 15),
-
             TextButton(
               onPressed: () {
                 print("Forgot Password clicked");
@@ -272,7 +268,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-
             TextButton(
               onPressed: () {
                 Navigator.push(

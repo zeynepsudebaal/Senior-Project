@@ -91,8 +91,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               onPressed: () async {
                 Navigator.of(context).pop();
                 await Future.delayed(Duration(milliseconds: 300));
-                await sendResponse(
-                    notificationId, 'yes', context); // 
+                await sendResponse(notificationId, 'yes', context); //
               },
             ),
             TextButton(
@@ -103,7 +102,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    content: Text("Ekiplerimiz tarafınıza yönlendirildi. İletişimde kalmak için chat sayfasına gidebilirsiniz."),
+                    content: Text(
+                        "Ekiplerimiz tarafınıza yönlendirildi. İletişimde kalmak için chat sayfasına gidebilirsiniz."),
                     actions: [
                       TextButton(
                         onPressed: () {
@@ -125,48 +125,50 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
   }
 
-  Future<void> sendResponse(String notificationId, String response, BuildContext context) async {
-  final url = Uri.parse('http://192.168.1.40:3000/api/web/earthquake/notification-response');
+  Future<void> sendResponse(
+      String notificationId, String response, BuildContext context) async {
+    final url = Uri.parse(
+        'http://172.20.10.2:3000/api/web/earthquake/notification-response');
 
-  try {
-    final result = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'notificationId': notificationId, 'response': response}),
-    );
+    try {
+      final result = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(
+            {'notificationId': notificationId, 'response': response}),
+      );
 
-    debugPrint('🔁 Status code: ${result.statusCode}');
-    debugPrint('🔁 Response body: ${result.body}');
+      debugPrint('🔁 Status code: ${result.statusCode}');
+      debugPrint('🔁 Response body: ${result.body}');
 
-    if (result.statusCode == 200 && response == 'no') {
-      final data = jsonDecode(result.body);
-      final message = data['message'] ??
-          "Ekiplerimiz tarafınıza yönlendirildi. İletişimde kalmak için chat sayfasına gidebilirsiniz.";
+      if (result.statusCode == 200 && response == 'no') {
+        final data = jsonDecode(result.body);
+        final message = data['message'] ??
+            "Ekiplerimiz tarafınıza yönlendirildi. İletişimde kalmak için chat sayfasına gidebilirsiniz.";
 
-      Future.delayed(Duration(milliseconds: 300), () {
-        if (!context.mounted) return;
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushNamed('/chat');
-                },
-                child: Text("Chat'e Git"),
-              ),
-            ],
-          ),
-        );
-      });
+        Future.delayed(Duration(milliseconds: 300), () {
+          if (!context.mounted) return;
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              content: Text(message),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pushNamed('/chat');
+                  },
+                  child: Text("Chat'e Git"),
+                ),
+              ],
+            ),
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ Exception: $e");
     }
-  } catch (e) {
-    debugPrint("❌ Exception: $e");
   }
-}
-
 
   Future<void> _checkLoginStatus() async {
     final isLoggedIn = await widget.authService.isLoggedIn();
@@ -192,7 +194,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         final response = await http.post(
-          Uri.parse('http://192.168.1.40:3000/api/token'),
+          Uri.parse('http://172.20.10.2:3000/api/token'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'userId': userId, 'fcmToken': fcmToken}),
         );
