@@ -112,7 +112,7 @@ class _NotificationPageState extends State<NotificationPage> {
   Future<void> _setUserResponse(String id, String response) async {
     final userId = user?.uid;
 
-    final url = Uri.parse('http://192.168.1.50:3000/api/web/user-response');
+    final url = Uri.parse('http://172.20.10.2:3000/api/web/user-response');
     final body = {
       'notificationId': id,
       'userId': userId,
