@@ -4,7 +4,7 @@ import 'dart:convert';
 import '../models/message.dart';
 
 // Bilgisayarının IP adresini burada doğru yazmalısın.
-const String apiUrl = 'http://172.20.10.2:3000/api/web/chat';
+const String apiUrl = 'http://192.168.1.38:3000/api/web/chat';
 
 class ChatService {
   static Future<String> startChat(String adminId, String userId) async {

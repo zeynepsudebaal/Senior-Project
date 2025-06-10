@@ -128,7 +128,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Future<void> sendResponse(
       String notificationId, String response, BuildContext context) async {
     final url = Uri.parse(
-        'http://172.20.10.2:3000/api/web/earthquake/notification-response');
+        'http://192.168.1.38:3000/api/web/earthquake/notification-response');
 
     try {
       final result = await http.post(
@@ -194,7 +194,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         final response = await http.post(
-          Uri.parse('http://172.20.10.2:3000/api/token'),
+          Uri.parse('http://192.168.1.38:3000/api/token'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'userId': userId, 'fcmToken': fcmToken}),
         );

@@ -134,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
         print("📦 FCM Token: $fcmToken");
 
         final response = await http.post(
-          Uri.parse('http://172.20.10.2:3000/api/token'), // IP'ni değiştir
+          Uri.parse('http://192.168.1.38:3000/api/token'), // IP'ni değiştir
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'userId': userId,
